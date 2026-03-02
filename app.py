@@ -54,10 +54,12 @@ metrics = load_metrics()
 
 # Faster & safer for XGBoost
 @st.cache_resource
-def load_explainer(model):
+def load_explainer():
+    model_path = os.path.join(BASE_DIR, "financial_model.pkl")
+    model = joblib.load(model_path)
     return shap.TreeExplainer(model)
 
-explainer = load_explainer(model)
+explainer = load_explainer()
 
 # ----------------------------------------------------------
 # SHOW MODEL PERFORMANCE
@@ -143,3 +145,4 @@ if st.button("🔍 Analyze Credit Risk"):
     shap.plots.waterfall(shap_values[0], show=False)
 
     st.pyplot(fig)
+
