@@ -19,22 +19,22 @@ st.title("🏦 IntelliCredit-X | AI Credit Decision Engine")
 
 @st.cache_resource
 def load_model():
-    model = joblib.load("models/financial_model.pkl")
+    model = joblib.load("financial_model.pkl")
     return model
 
 @st.cache_resource
 def load_threshold():
-    with open("models/config.json", "r") as f:
+    with open("config.json", "r") as f:
         config = json.load(f)
     return config["best_threshold"]
 
 @st.cache_resource
 def load_feature_names():
-    return joblib.load("models/feature_names.pkl")
+    return joblib.load("feature_names.pkl")
 
 @st.cache_resource
 def load_metrics():
-    with open("models/metrics.json", "r") as f:
+    with open("metrics.json", "r") as f:
         return json.load(f)
 
 model = load_model()
@@ -131,4 +131,5 @@ if st.button("🔍 Analyze Credit Risk"):
 
     fig, ax = plt.subplots()
     shap.plots.waterfall(shap_values[0], show=False)
+
     st.pyplot(fig)
