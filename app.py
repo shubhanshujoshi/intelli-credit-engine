@@ -5,6 +5,7 @@ import joblib
 import shap
 import json
 import matplotlib.pyplot as plt
+import os
 
 # ----------------------------------------------------------
 # PAGE CONFIG
@@ -14,27 +15,36 @@ st.set_page_config(layout="wide")
 st.title("🏦 IntelliCredit-X | AI Credit Decision Engine")
 
 # ----------------------------------------------------------
+# SAFE BASE DIRECTORY (IMPORTANT FOR STREAMLIT CLOUD)
+# ----------------------------------------------------------
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ----------------------------------------------------------
 # LOAD MODEL FILES
 # ----------------------------------------------------------
 
 @st.cache_resource
 def load_model():
-    model = joblib.load("financial_model.pkl")
-    return model
+    model_path = os.path.join(BASE_DIR, "financial_model.pkl")
+    return joblib.load(model_path)
 
 @st.cache_resource
 def load_threshold():
-    with open("config.json", "r") as f:
+    config_path = os.path.join(BASE_DIR, "config.json")
+    with open(config_path, "r") as f:
         config = json.load(f)
     return config["best_threshold"]
 
 @st.cache_resource
 def load_feature_names():
-    return joblib.load("feature_names.pkl")
+    feature_path = os.path.join(BASE_DIR, "feature_names.pkl")
+    return joblib.load(feature_path)
 
 @st.cache_resource
 def load_metrics():
-    with open("metrics.json", "r") as f:
+    metrics_path = os.path.join(BASE_DIR, "metrics.json")
+    with open(metrics_path, "r") as f:
         return json.load(f)
 
 model = load_model()
@@ -42,10 +52,10 @@ threshold = load_threshold()
 feature_names = load_feature_names()
 metrics = load_metrics()
 
-# SHAP Explainer (cached)
+# Faster & safer for XGBoost
 @st.cache_resource
 def load_explainer(model):
-    return shap.Explainer(model)
+    return shap.TreeExplainer(model)
 
 explainer = load_explainer(model)
 
@@ -54,7 +64,7 @@ explainer = load_explainer(model)
 # ----------------------------------------------------------
 
 st.sidebar.header("📊 Model Performance")
-st.sidebar.write(metrics)
+st.sidebar.json(metrics)
 
 # ----------------------------------------------------------
 # INPUT SECTION
@@ -84,7 +94,7 @@ with col2:
 
 if st.button("🔍 Analyze Credit Risk"):
 
-    input_data = np.array([[
+    input_data = np.array([[ 
         revenue, ebitda, debt, interest_cov,
         gst, litigation, sentiment, sector,
         mgmt, capacity
