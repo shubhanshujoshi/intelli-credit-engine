@@ -1,0 +1,8 @@
+streamlit
+xgboost
+pandas
+numpy
+shap
+matplotlib
+joblib
+reportlab
