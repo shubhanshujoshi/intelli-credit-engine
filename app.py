@@ -23,8 +23,8 @@ st.title("IntelliCredit-X | AI Credit Decision Engine")
 # LOAD API KEYS
 # ----------------------------------------------------------
 
-GOOGLE_API_KEY = os.getenv("AIzaSyD7zwEuqNoFK8j57zBnKl_jEtdvCX8lpKo")
-GNEWS_API_KEY = os.getenv("76e91a77900ca3ce9ebc6ff1d85e0936")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
 
 if GOOGLE_API_KEY:
     client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -251,4 +251,5 @@ if st.button("🔍 Analyze Credit Risk"):
     shap.plots.waterfall(shap_values[0], show=False)
 
     st.pyplot(fig)
+
 
