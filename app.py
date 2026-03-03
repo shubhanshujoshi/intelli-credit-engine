@@ -32,7 +32,7 @@ else:
     client = None
 
 # ----------------------------------------------------------
-# GEMINI SENTIMENT FUNCTION (Single Call Optimized)
+# GEMINI SENTIMENT FUNCTION
 # ----------------------------------------------------------
 
 def get_news_sentiment_score(company_name, combined_news_text):
@@ -44,7 +44,7 @@ def get_news_sentiment_score(company_name, combined_news_text):
     You are an expert corporate credit risk analyst.
 
     Based on the following recent news (last 60 days) about '{company_name}',
-    provide a single sentiment score between -1.0 and +1.0.
+    provide a sentiment score between -1.0 and +1.0.
 
     Negative = high credit risk
     Positive = financially strong
@@ -162,7 +162,6 @@ if st.button("🔍 Analyze Credit Risk"):
     with st.spinner("Fetching last 60 days news and analyzing sentiment..."):
         articles = fetch_last_60_days_news(company_name)
 
-        # Combine all headlines into ONE Gemini call (efficient)
         combined_news = ""
         for article in articles:
             combined_news += article.get("title", "") + ". "
@@ -185,7 +184,6 @@ if st.button("🔍 Analyze Credit Risk"):
             title = article.get("title", "No Title")
             source = article.get("source", {}).get("name", "Unknown Source")
             url = article.get("url", "")
-
             st.markdown(f"• **{source}** – [{title}]({url})")
     else:
         st.warning("No recent news articles found for this company.")
@@ -203,8 +201,6 @@ if st.button("🔍 Analyze Credit Risk"):
     input_df = pd.DataFrame(input_data, columns=feature_names)
 
     prob = model.predict_proba(input_df)[0][1]
-
-    # Blend sentiment impact slightly
     prob = prob + (0.05 * sentiment_score)
     prob = max(0, min(prob, 1))
 
@@ -235,10 +231,20 @@ if st.button("🔍 Analyze Credit Risk"):
     st.subheader("Recommended Terms")
 
     formatted_loan = f"{adjusted_loan:,.0f}"
-    loan_in_words = num2words(int(adjusted_loan), lang='en_IN').title()
-
     st.success(f"Recommended Loan Amount: ₹ {formatted_loan}")
-    st.info(f"Rupees {loan_in_words} Only")
+
+    # SAFE WORD CONVERSION (Overflow Protected)
+
+    try:
+        if adjusted_loan < 1e12:
+            loan_in_words = num2words(int(adjusted_loan), lang='en_IN').title()
+            st.info(f"Rupees {loan_in_words} Only")
+        else:
+            loan_in_crore = adjusted_loan / 1e7
+            st.info(f"≈ ₹ {loan_in_crore:.2f} Crore")
+    except:
+        st.info("Loan amount too large to convert into words.")
+
     st.write("Recommended Interest Rate:", round(interest_rate, 2), "%")
 
     # ------------------------------------------------------
