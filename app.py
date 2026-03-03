@@ -7,6 +7,9 @@ import json
 import matplotlib.pyplot as plt
 import os
 from num2words import num2words
+from google import genai
+import re
+import os
 
 # ----------------------------------------------------------
 # PAGE CONFIG
@@ -151,6 +154,7 @@ if st.button("🔍 Analyze Credit Risk"):
     shap.plots.waterfall(shap_values[0], show=False)
 
     st.pyplot(fig)
+
 
 
 
