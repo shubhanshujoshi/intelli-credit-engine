@@ -7,3 +7,5 @@ matplotlib
 joblib
 num2words
 reportlab
+google-genai
+
