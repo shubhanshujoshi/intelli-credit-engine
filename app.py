@@ -6,9 +6,11 @@ import shap
 import json
 import matplotlib.pyplot as plt
 import os
+import re
+import requests
+from datetime import datetime, timedelta
 from num2words import num2words
 from google import genai
-import re
 
 # ----------------------------------------------------------
 # PAGE CONFIG
@@ -18,10 +20,11 @@ st.set_page_config(layout="wide")
 st.title("IntelliCredit-X | AI Credit Decision Engine")
 
 # ----------------------------------------------------------
-# LOAD API KEY (STREAMLIT CLOUD SAFE)
+# LOAD API KEYS
 # ----------------------------------------------------------
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
 
 if GOOGLE_API_KEY:
     client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -66,6 +69,67 @@ def get_news_sentiment_score(company_name, news_snippet):
 
 
 # ----------------------------------------------------------
+# FETCH LAST 60 DAYS NEWS
+# ----------------------------------------------------------
+
+def fetch_last_60_days_news(company_name):
+
+    if not GNEWS_API_KEY:
+        return []
+
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=60)
+
+    url = (
+        f"https://gnews.io/api/v4/search?"
+        f"q={company_name}&"
+        f"from={start_date.strftime('%Y-%m-%d')}&"
+        f"to={end_date.strftime('%Y-%m-%d')}&"
+        f"lang=en&"
+        f"max=10&"
+        f"apikey={GNEWS_API_KEY}"
+    )
+
+    try:
+        response = requests.get(url)
+        return response.json().get("articles", [])
+    except:
+        return []
+
+
+# ----------------------------------------------------------
+# WEIGHTED SENTIMENT AGGREGATION
+# ----------------------------------------------------------
+
+def calculate_weighted_sentiment(company_name, articles):
+
+    if not articles:
+        return 0.0
+
+    total_score = 0
+    total_weight = 0
+
+    for article in articles:
+
+        text = article.get("title", "") + " " + article.get("description", "")
+
+        score = get_news_sentiment_score(company_name, text)
+
+        try:
+            published_date = datetime.strptime(article["publishedAt"][:10], "%Y-%m-%d")
+            days_old = (datetime.utcnow() - published_date).days
+        except:
+            days_old = 30
+
+        weight = max(1, 60 - days_old)
+
+        total_score += score * weight
+        total_weight += weight
+
+    return total_score / total_weight if total_weight else 0
+
+
+# ----------------------------------------------------------
 # SAFE BASE DIRECTORY
 # ----------------------------------------------------------
 
@@ -85,11 +149,6 @@ def load_feature_names():
     return joblib.load(os.path.join(BASE_DIR, "feature_names.pkl"))
 
 @st.cache_resource
-def load_metrics():
-    with open(os.path.join(BASE_DIR, "metrics.json"), "r") as f:
-        return json.load(f)
-
-@st.cache_resource
 def load_explainer():
     model = joblib.load(os.path.join(BASE_DIR, "financial_model.pkl"))
     return shap.TreeExplainer(model)
@@ -97,7 +156,6 @@ def load_explainer():
 model = load_model()
 threshold = load_threshold()
 feature_names = load_feature_names()
-metrics = load_metrics()
 explainer = load_explainer()
 
 # ----------------------------------------------------------
@@ -121,10 +179,8 @@ with col2:
     mgmt = st.slider("Management Quality", 1.0, 10.0, 7.0)
     capacity = st.slider("Capacity Utilization", 0.0, 1.0, 0.8)
 
-st.subheader("External News Risk Analysis")
-
+st.subheader("External AI News Risk Analysis")
 company_name = st.text_input("Company Name")
-news_snippet = st.text_area("Paste Recent News About Company")
 
 # ----------------------------------------------------------
 # PREDICTION
@@ -132,7 +188,9 @@ news_snippet = st.text_area("Paste Recent News About Company")
 
 if st.button("🔍 Analyze Credit Risk"):
 
-    sentiment_score = get_news_sentiment_score(company_name, news_snippet)
+    with st.spinner("Fetching last 60 days news and analyzing sentiment..."):
+        articles = fetch_last_60_days_news(company_name)
+        sentiment_score = calculate_weighted_sentiment(company_name, articles)
 
     input_data = np.array([[ 
         revenue, ebitda, debt, interest_cov,
@@ -144,16 +202,16 @@ if st.button("🔍 Analyze Credit Risk"):
 
     prob = model.predict_proba(input_df)[0][1]
 
-    # Optional: Blend sentiment impact slightly
+    # Blend sentiment impact slightly
     prob = prob + (0.05 * sentiment_score)
-    prob = max(0, min(prob, 1))  # keep within 0-1
+    prob = max(0, min(prob, 1))
 
     prediction = int(prob > threshold)
 
     st.subheader("Risk Assessment")
 
     st.metric("Probability of Default (PD)", round(prob, 3))
-    st.metric("News Sentiment Score", round(sentiment_score, 2))
+    st.metric("AI News Sentiment Score (60D)", round(sentiment_score, 2))
     st.write("Decision Threshold:", round(threshold, 3))
 
     if prediction == 1:
