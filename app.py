@@ -32,26 +32,26 @@ else:
     client = None
 
 # ----------------------------------------------------------
-# GEMINI SENTIMENT FUNCTION
+# GEMINI SENTIMENT FUNCTION (Single Call Optimized)
 # ----------------------------------------------------------
 
-def get_news_sentiment_score(company_name, news_snippet):
+def get_news_sentiment_score(company_name, combined_news_text):
 
-    if not client or not news_snippet.strip():
+    if not client or not combined_news_text.strip():
         return 0.0
 
     prompt = f"""
     You are an expert corporate credit risk analyst.
 
-    Analyze the following news about '{company_name}'.
+    Based on the following recent news (last 60 days) about '{company_name}',
+    provide a single sentiment score between -1.0 and +1.0.
 
-    Return a number between -1.0 and +1.0.
     Negative = high credit risk
     Positive = financially strong
-    Only return the number.
+    Return ONLY the number.
 
     News:
-    "{news_snippet}"
+    "{combined_news_text}"
     """
 
     try:
@@ -98,39 +98,7 @@ def fetch_last_60_days_news(company_name):
 
 
 # ----------------------------------------------------------
-# WEIGHTED SENTIMENT AGGREGATION
-# ----------------------------------------------------------
-
-def calculate_weighted_sentiment(company_name, articles):
-
-    if not articles:
-        return 0.0
-
-    total_score = 0
-    total_weight = 0
-
-    for article in articles:
-
-        text = article.get("title", "") + " " + article.get("description", "")
-
-        score = get_news_sentiment_score(company_name, text)
-
-        try:
-            published_date = datetime.strptime(article["publishedAt"][:10], "%Y-%m-%d")
-            days_old = (datetime.utcnow() - published_date).days
-        except:
-            days_old = 30
-
-        weight = max(1, 60 - days_old)
-
-        total_score += score * weight
-        total_weight += weight
-
-    return total_score / total_weight if total_weight else 0
-
-
-# ----------------------------------------------------------
-# SAFE BASE DIRECTORY
+# LOAD MODEL FILES
 # ----------------------------------------------------------
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -188,29 +156,43 @@ company_name = st.text_input("Company Name")
 
 if st.button("🔍 Analyze Credit Risk"):
 
+    articles = []
+    sentiment_score = 0.0
+
     with st.spinner("Fetching last 60 days news and analyzing sentiment..."):
         articles = fetch_last_60_days_news(company_name)
-        sentiment_score = calculate_weighted_sentiment(company_name, articles)
-        # ------------------------------------------------------
-# SHOW ARTICLES ANALYZED
-# ------------------------------------------------------
 
-st.subheader("News Intelligence Layer")
+        # Combine all headlines into ONE Gemini call (efficient)
+        combined_news = ""
+        for article in articles:
+            combined_news += article.get("title", "") + ". "
+            combined_news += article.get("description", "") + ". "
 
-article_count = len(articles)
+        sentiment_score = get_news_sentiment_score(company_name, combined_news)
 
-if article_count > 0:
-    st.success(f"Articles Analyzed (Last 60 Days): {article_count}")
+    # ------------------------------------------------------
+    # SHOW ARTICLES ANALYZED
+    # ------------------------------------------------------
 
-    for article in articles:
-        title = article.get("title", "No Title")
-        source = article.get("source", {}).get("name", "Unknown Source")
-        url = article.get("url", "")
+    st.subheader("News Intelligence Layer")
 
-        st.markdown(f"• **{source}** – [{title}]({url})")
+    article_count = len(articles)
 
-else:
-    st.warning("No recent news articles found for this company.")
+    if article_count > 0:
+        st.success(f"Articles Analyzed (Last 60 Days): {article_count}")
+
+        for article in articles:
+            title = article.get("title", "No Title")
+            source = article.get("source", {}).get("name", "Unknown Source")
+            url = article.get("url", "")
+
+            st.markdown(f"• **{source}** – [{title}]({url})")
+    else:
+        st.warning("No recent news articles found for this company.")
+
+    # ------------------------------------------------------
+    # ML PREDICTION
+    # ------------------------------------------------------
 
     input_data = np.array([[ 
         revenue, ebitda, debt, interest_cov,
@@ -271,6 +253,3 @@ else:
     shap.plots.waterfall(shap_values[0], show=False)
 
     st.pyplot(fig)
-
-
-
