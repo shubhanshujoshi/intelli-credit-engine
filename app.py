@@ -12,7 +12,7 @@ import os
 # ----------------------------------------------------------
 
 st.set_page_config(layout="wide")
-st.title("🏦 IntelliCredit-X | AI Credit Decision Engine")
+st.title("IntelliCredit-X | AI Credit Decision Engine")
 
 # ----------------------------------------------------------
 # SAFE BASE DIRECTORY (IMPORTANT FOR STREAMLIT CLOUD)
@@ -65,14 +65,14 @@ explainer = load_explainer()
 # SHOW MODEL PERFORMANCE
 # ----------------------------------------------------------
 
-st.sidebar.header("📊 Model Performance")
+st.sidebar.header("Model Performance")
 st.sidebar.json(metrics)
 
 # ----------------------------------------------------------
 # INPUT SECTION
 # ----------------------------------------------------------
 
-st.header("📥 Enter Company Financial Details")
+st.header("Enter Company Financial Details")
 
 col1, col2 = st.columns(2)
 
@@ -107,7 +107,7 @@ if st.button("🔍 Analyze Credit Risk"):
     prob = model.predict_proba(input_df)[0][1]
     prediction = int(prob > threshold)
 
-    st.subheader("📊 Risk Assessment")
+    st.subheader("Risk Assessment")
 
     st.write("Probability of Default (PD):", round(prob, 3))
     st.write("Decision Threshold:", round(threshold, 3))
@@ -128,7 +128,7 @@ if st.button("🔍 Analyze Credit Risk"):
     risk_premium = prob * 6
     interest_rate = base_rate + risk_premium
 
-    st.subheader("💰 Recommended Terms")
+    st.subheader("Recommended Terms")
 
     st.write("Recommended Loan Amount: ₹", round(adjusted_loan, 2))
     st.write("Recommended Interest Rate:", round(interest_rate, 2), "%")
@@ -137,7 +137,7 @@ if st.button("🔍 Analyze Credit Risk"):
     # SHAP EXPLANATION
     # ------------------------------------------------------
 
-    st.subheader("🔎 Explainability (Why this decision?)")
+    st.subheader("Explainability (Why this decision?)")
 
     shap_values = explainer(input_df)
 
@@ -145,4 +145,5 @@ if st.button("🔍 Analyze Credit Risk"):
     shap.plots.waterfall(shap_values[0], show=False)
 
     st.pyplot(fig)
+
 
