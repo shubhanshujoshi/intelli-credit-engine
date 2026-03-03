@@ -191,6 +191,26 @@ if st.button("🔍 Analyze Credit Risk"):
     with st.spinner("Fetching last 60 days news and analyzing sentiment..."):
         articles = fetch_last_60_days_news(company_name)
         sentiment_score = calculate_weighted_sentiment(company_name, articles)
+        # ------------------------------------------------------
+# SHOW ARTICLES ANALYZED
+# ------------------------------------------------------
+
+st.subheader("News Intelligence Layer")
+
+article_count = len(articles)
+
+if article_count > 0:
+    st.success(f"Articles Analyzed (Last 60 Days): {article_count}")
+
+    for article in articles:
+        title = article.get("title", "No Title")
+        source = article.get("source", {}).get("name", "Unknown Source")
+        url = article.get("url", "")
+
+        st.markdown(f"• **{source}** – [{title}]({url})")
+
+else:
+    st.warning("No recent news articles found for this company.")
 
     input_data = np.array([[ 
         revenue, ebitda, debt, interest_cov,
@@ -251,5 +271,6 @@ if st.button("🔍 Analyze Credit Risk"):
     shap.plots.waterfall(shap_values[0], show=False)
 
     st.pyplot(fig)
+
 
 
