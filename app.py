@@ -6,6 +6,7 @@ import shap
 import json
 import matplotlib.pyplot as plt
 import os
+from num2words import num2words
 
 # ----------------------------------------------------------
 # PAGE CONFIG
@@ -125,7 +126,17 @@ if st.button("🔍 Analyze Credit Risk"):
 
     st.subheader("Recommended Terms")
 
-    st.write("Recommended Loan Amount: ₹", round(adjusted_loan, 2))
+    # Format number with commas (Indian style)
+    formatted_loan = f"{adjusted_loan:,.0f}"
+
+    # Convert to words (Indian format)
+    loan_in_words = num2words(int(adjusted_loan), lang='en_IN').title()
+
+    st.write("Recommended Loan Amount:")
+    st.success(f"₹ {formatted_loan}")
+
+    st.write("In Words:")
+    st.info(f"Rupees {loan_in_words} Only")
     st.write("Recommended Interest Rate:", round(interest_rate, 2), "%")
 
     # ------------------------------------------------------
@@ -140,6 +151,7 @@ if st.button("🔍 Analyze Credit Risk"):
     shap.plots.waterfall(shap_values[0], show=False)
 
     st.pyplot(fig)
+
 
 
 
