@@ -62,11 +62,6 @@ def load_explainer():
 explainer = load_explainer()
 
 # ----------------------------------------------------------
-# SHOW MODEL PERFORMANCE
-# ----------------------------------------------------------
-
-st.sidebar.header("Model Performance")
-st.sidebar.json(metrics)
 
 # ----------------------------------------------------------
 # INPUT SECTION
@@ -145,5 +140,6 @@ if st.button("🔍 Analyze Credit Risk"):
     shap.plots.waterfall(shap_values[0], show=False)
 
     st.pyplot(fig)
+
 
 
