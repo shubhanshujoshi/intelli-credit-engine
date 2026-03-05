@@ -2,9 +2,10 @@ streamlit
 pandas
 numpy
 joblib
-shap
+scikit-learn
 matplotlib
+shap
 requests
 num2words
+pdfplumber
 google-genai
-scikit-learn
