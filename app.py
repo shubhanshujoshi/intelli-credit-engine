@@ -14,6 +14,7 @@ from docx import Document
 from datetime import datetime, timedelta
 from num2words import num2words
 from google import genai
+import pdfplumber
 
 # ----------------------------------------------------------
 # PAGE CONFIG
@@ -39,19 +40,22 @@ else:
 # ----------------------------------------------------------
 
 def extract_text_from_pdf(uploaded_file):
-    """Extracts raw text from an uploaded PDF file."""
-    reader = PyPDF2.PdfReader(uploaded_file)
+    """Extracts raw text from an uploaded PDF file, handling tables better."""
     text = ""
-    for page in reader.pages:
-        extracted = page.extract_text()
-        if extracted:
-            text += extracted + "\n"
+    try:
+        with pdfplumber.open(uploaded_file) as pdf:
+            for page in pdf.pages:
+                extracted = page.extract_text()
+                if extracted:
+                    text += extracted + "\n"
+    except Exception as e:
+        st.error(f"Failed to read PDF file: {e}")
     return text
 
 def parse_financials_with_gemini(text):
-    """Uses Gemini to extract financial data from messy text."""
+    """Uses Gemini to extract financial data from messy text with error tracking."""
     if not client or not text.strip():
-        return None
+        return None, "No text extracted from PDF or Gemini client not initialized."
 
     prompt = """
     You are an expert financial analyst. Read the following text extracted from a company document.
@@ -69,10 +73,16 @@ def parse_financials_with_gemini(text):
         
         # Clean up response to ensure it's valid JSON
         result_text = response.text.replace("```json", "").replace("```", "").strip()
-        return json.loads(result_text)
+        
+        # Attempt to parse
+        parsed_json = json.loads(result_text)
+        return parsed_json, None
+        
+    except json.JSONDecodeError as e:
+        raw_output = response.text if 'response' in locals() else "No response"
+        return None, f"JSON Decode Error: {e}\n\nRaw AI Output:\n{raw_output}"
     except Exception as e:
-        return None
-
+        return None, f"API Error: {str(e)}"
 # ----------------------------------------------------------
 # GEMINI SENTIMENT FUNCTION
 # ----------------------------------------------------------
@@ -212,6 +222,7 @@ feature_names = load_feature_names()
 explainer = load_explainer()
 
 # ----------------------------------------------------------
+# ----------------------------------------------------------
 # INPUT SECTION & DATA INGESTOR
 # ----------------------------------------------------------
 
@@ -229,7 +240,11 @@ if uploaded_file is not None:
     if st.session_state.get('uploaded_filename') != uploaded_file.name:
         with st.spinner("AI Agent extracting financial data from document..."):
             raw_text = extract_text_from_pdf(uploaded_file)
-            extracted_data = parse_financials_with_gemini(raw_text)
+            
+            # Show how many characters were extracted to ensure the PDF isn't blank
+            st.write(f"*(Extracted {len(raw_text)} characters from PDF)*")
+            
+            extracted_data, error_msg = parse_financials_with_gemini(raw_text)
             
             if extracted_data:
                 st.success("✅ Financials successfully extracted via Gemini AI!")
@@ -239,31 +254,12 @@ if uploaded_file is not None:
                 with st.expander("View Extracted JSON Data"):
                     st.json(extracted_data) 
             else:
-                st.error("Could not parse JSON from document. Using default or manual inputs.")
+                st.error("⚠️ Extraction Failed!")
+                # This box will show you EXACTLY what went wrong
+                st.text_area("Error Details & Raw AI Output", error_msg, height=200)
         
         # Mark this file as processed
         st.session_state['uploaded_filename'] = uploaded_file.name
-
-
-st.header("2. Financial Verification & Primary Insights")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    revenue = st.number_input("Revenue", value=st.session_state.auto_rev)
-    ebitda = st.number_input("EBITDA", value=st.session_state.auto_ebitda)
-    debt = st.number_input("Debt", value=st.session_state.auto_debt)
-    interest_cov = st.number_input("Interest Coverage", value=2.5)
-    gst = st.slider("GSTR-2A/3B Variance (Indian Context)", 0.0, 0.5, 0.1)
-
-with col2:
-    litigation = st.number_input("Litigation Count", value=1)
-    sector = st.slider("Sector Risk", 0.0, 1.0, 0.3)
-    mgmt = st.slider("Management Quality", 1.0, 10.0, 7.0)
-    capacity = st.slider("Capacity Utilization", 0.0, 1.0, 0.8)
-
-st.subheader("External AI News Risk Analysis")
-company_name = st.text_input("Company Name", value="tata power")
 
 # ----------------------------------------------------------
 # PREDICTION
@@ -398,3 +394,4 @@ if st.button("🔍 Analyze Credit Risk"):
         file_name=f"{company_name.replace(' ', '_')}_CAM.docx",
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
+
