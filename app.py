@@ -201,7 +201,7 @@ if st.button("🔍 Analyze Credit Risk"):
     input_df = pd.DataFrame(input_data, columns=feature_names)
 
     prob = model.predict_proba(input_df)[0][1]
-    prob = prob + (0.05 * sentiment_score)
+    prob = prob - (0.05 * sentiment_score)
     prob = max(0, min(prob, 1))
 
     prediction = int(prob > threshold)
@@ -259,3 +259,4 @@ if st.button("🔍 Analyze Credit Risk"):
     shap.plots.waterfall(shap_values[0], show=False)
 
     st.pyplot(fig)
+
