@@ -1,13 +1,12 @@
 streamlit
-xgboost
 pandas
 numpy
+scikit-learn
 shap
 matplotlib
-joblib
 num2words
-reportlab
 google-genai
 requests
 PyPDF2==3.0.1
 python-docx==1.1.0
+pdfplumber==0.11.0
