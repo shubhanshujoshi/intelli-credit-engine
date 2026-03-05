@@ -155,12 +155,14 @@ def get_news_sentiment(company):
     start_date = end_date - timedelta(days=60)
 
     url = (
-        f"https://gnews.io/api/v4/search?"
-        f"q={company}&"
-        f"from={start_date.strftime('%Y-%m-%d')}&"
-        f"to={end_date.strftime('%Y-%m-%d')}&"
-        f"max=5&apikey={GNEWS_API_KEY}"
-    )
+    f"https://gnews.io/api/v4/search?"
+    f"q=\"{company}\" AND (business OR company OR earnings OR finance)&"
+    f"from={start_date.strftime('%Y-%m-%d')}&"
+    f"to={end_date.strftime('%Y-%m-%d')}&"
+    f"lang=en&"
+    f"max=5&apikey={GNEWS_API_KEY}"
+)
+    
 
     try:
         response = requests.get(url, timeout=10)
@@ -340,8 +342,25 @@ if st.button("Analyze Credit Risk"):
 
     st.subheader("News Intelligence")
 
-    for a in articles:
-        st.write(a.get("title",""))
+if len(articles) > 0:
+
+    for article in articles:
+
+        title = article.get("title","No title")
+        url = article.get("url","")
+        source = article.get("source",{}).get("name","Unknown Source")
+        description = article.get("description","")
+
+        st.markdown(f"**{source}** — [{title}]({url})")
+
+        if description:
+            st.caption(description)
+
+        st.write("---")
+
+else:
+
+    st.warning("No recent business news found for this company.")
 
     if model and feature_names:
 
@@ -437,3 +456,4 @@ if st.button("Analyze Credit Risk"):
     cam = generate_cam(company,revenue,ebitda,debt,decision)
 
     st.write(cam)
+
