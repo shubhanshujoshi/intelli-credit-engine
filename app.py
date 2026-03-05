@@ -23,12 +23,18 @@ import pdfplumber
 st.set_page_config(layout="wide")
 st.title("IntelliCredit-X | AI Credit Decision Engine")
 
+
 # ----------------------------------------------------------
-# LOAD API KEYS
+# LOAD API KEYS SECURELY
 # ----------------------------------------------------------
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
+try:
+    # This pulls safely from Streamlit's hidden vault
+    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+    GNEWS_API_KEY = st.secrets["GNEWS_API_KEY"]
+except KeyError:
+    st.error("API Keys missing! Please add them to Streamlit Secrets.")
+    st.stop() # Stops the app from crashing further down
 
 if GOOGLE_API_KEY:
     client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -394,4 +400,5 @@ if st.button("🔍 Analyze Credit Risk"):
         file_name=f"{company_name.replace(' ', '_')}_CAM.docx",
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
+
 
