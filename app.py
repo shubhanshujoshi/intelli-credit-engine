@@ -13,16 +13,16 @@ from datetime import datetime, timedelta
 from num2words import num2words
 from google import genai
 
-# ---------------------------------------------------
+# ---------------------------------------------------------
 # PAGE CONFIG
-# ---------------------------------------------------
+# ---------------------------------------------------------
 
 st.set_page_config(layout="wide")
 st.title("IntelliCredit-X | AI Credit Decision Engine")
 
-# ---------------------------------------------------
+# ---------------------------------------------------------
 # LOAD API KEYS
-# ---------------------------------------------------
+# ---------------------------------------------------------
 
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
@@ -38,9 +38,9 @@ if GOOGLE_API_KEY:
     except:
         client = None
 
-# ---------------------------------------------------
+# ---------------------------------------------------------
 # LOAD MODEL
-# ---------------------------------------------------
+# ---------------------------------------------------------
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -60,7 +60,7 @@ def load_threshold():
         return 0.5
 
 @st.cache_resource
-def load_features():
+def load_feature_names():
     try:
         return joblib.load(os.path.join(BASE_DIR, "feature_names.pkl"))
     except:
@@ -76,12 +76,12 @@ def load_explainer():
 
 model = load_model()
 threshold = load_threshold()
-feature_names = load_features()
+feature_names = load_feature_names()
 explainer = load_explainer()
 
-# ---------------------------------------------------
+# ---------------------------------------------------------
 # PDF TEXT EXTRACTION
-# ---------------------------------------------------
+# ---------------------------------------------------------
 
 def extract_pdf_text(uploaded_file):
 
@@ -98,9 +98,10 @@ def extract_pdf_text(uploaded_file):
 
     return text
 
-# ---------------------------------------------------
+
+# ---------------------------------------------------------
 # AI FINANCIAL EXTRACTION
-# ---------------------------------------------------
+# ---------------------------------------------------------
 
 def ai_extract_financials(text):
 
@@ -108,52 +109,57 @@ def ai_extract_financials(text):
         return {}
 
     prompt = f"""
-    Extract financial values from this statement.
+    Extract the following financial values from this statement.
 
-    Return JSON with:
+    Return JSON with keys:
     revenue
     profit_before_tax
     finance_cost
     depreciation
     total_debt
 
-    If missing return null.
+    If value not found return null.
 
     Text:
-    {text[:12000]}
+    {text[:10000]}
     """
 
     try:
+
         response = client.models.generate_content(
             model="gemini-1.5-flash",
             contents=prompt
         )
 
-        cleaned = response.text.replace("```json", "").replace("```", "")
+        cleaned = response.text.replace("```json","").replace("```","")
+
         data = json.loads(cleaned)
 
         return data
 
     except:
+
         return {}
 
-# ---------------------------------------------------
+
+# ---------------------------------------------------------
 # NEWS SENTIMENT
-# ---------------------------------------------------
+# ---------------------------------------------------------
 
 def get_news_sentiment(company):
 
     if not company or not GNEWS_API_KEY:
         return 0, []
 
-    end = datetime.utcnow()
-    start = end - timedelta(days=60)
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=60)
 
     url = (
-        f"https://gnews.io/api/v4/search?q={company}"
-        f"&from={start.strftime('%Y-%m-%d')}"
-        f"&to={end.strftime('%Y-%m-%d')}"
-        f"&max=5&apikey={GNEWS_API_KEY}"
+        f"https://gnews.io/api/v4/search?"
+        f"q={company}&"
+        f"from={start_date.strftime('%Y-%m-%d')}&"
+        f"to={end_date.strftime('%Y-%m-%d')}&"
+        f"max=5&apikey={GNEWS_API_KEY}"
     )
 
     try:
@@ -164,37 +170,42 @@ def get_news_sentiment(company):
 
     combined = ""
     for a in articles:
-        combined += a.get("title", "") + ". "
+        combined += a.get("title","") + ". "
 
     if not client or combined == "":
         return 0, articles
 
     prompt = f"""
-    Return sentiment score between -1 and 1 for credit risk.
+    Return sentiment score between -1 and 1.
 
     News:
     {combined}
     """
 
     try:
+
         resp = client.models.generate_content(
             model="gemini-1.5-flash",
             contents=prompt
         )
 
         number = re.findall(r'-?\d+\.?\d*', resp.text)[0]
+
         return float(number), articles
 
     except:
+
         return 0, articles
 
-# ---------------------------------------------------
-# CREDIT MEMO
-# ---------------------------------------------------
 
-def generate_cam(company, revenue, ebitda, debt, decision):
+# ---------------------------------------------------------
+# CAM GENERATOR
+# ---------------------------------------------------------
+
+def generate_cam(company,revenue,ebitda,debt,decision):
 
     if not client:
+
         return f"""
 Credit Appraisal Memo
 
@@ -204,20 +215,23 @@ Revenue: {revenue}
 EBITDA: {ebitda}
 Debt: {debt}
 
-Decision: {decision}
+Final Decision: {decision}
 """
 
     prompt = f"""
-Generate a short credit appraisal memo.
+Create a professional Credit Appraisal Memo.
 
 Company: {company}
+
 Revenue: {revenue}
 EBITDA: {ebitda}
 Debt: {debt}
+
 Decision: {decision}
 """
 
     try:
+
         response = client.models.generate_content(
             model="gemini-1.5-flash",
             contents=prompt
@@ -226,16 +240,18 @@ Decision: {decision}
         return response.text
 
     except:
+
         return "CAM generation unavailable."
 
-# ---------------------------------------------------
-# PDF UPLOAD
-# ---------------------------------------------------
 
-st.header("Upload Financial Statement")
+# ---------------------------------------------------------
+# PDF UPLOAD
+# ---------------------------------------------------------
+
+st.header("Upload Financial Documents")
 
 uploaded_pdf = st.file_uploader(
-    "Upload Balance Sheet / P&L",
+    "Upload Balance Sheet or P&L Statement",
     type=["pdf"]
 )
 
@@ -243,49 +259,51 @@ ai_data = {}
 
 if uploaded_pdf:
 
-    st.success("PDF uploaded")
+    st.success("PDF uploaded successfully")
 
-    pdf_text = extract_pdf_text(uploaded_pdf)
+    text = extract_pdf_text(uploaded_pdf)
 
-    ai_data = ai_extract_financials(pdf_text)
+    ai_data = ai_extract_financials(text)
 
     if ai_data:
-        st.info("AI extracted financials. Please verify.")
+        st.info("AI extracted financials. Please verify values below.")
 
-# ---------------------------------------------------
-# EDITABLE FINANCIAL FIELDS
-# ---------------------------------------------------
+
+# ---------------------------------------------------------
+# EDITABLE FINANCIAL INPUTS
+# ---------------------------------------------------------
 
 st.header("Financial Inputs")
 
 revenue = st.number_input(
     "Revenue",
-    value=float(ai_data.get("revenue", 500000000))
+    value=float(ai_data.get("revenue",500000000))
 )
 
 pbt = st.number_input(
     "Profit Before Tax",
-    value=float(ai_data.get("profit_before_tax", 50000000))
+    value=float(ai_data.get("profit_before_tax",50000000))
 )
 
 finance_cost = st.number_input(
     "Finance Cost",
-    value=float(ai_data.get("finance_cost", 10000000))
+    value=float(ai_data.get("finance_cost",10000000))
 )
 
 depreciation = st.number_input(
     "Depreciation",
-    value=float(ai_data.get("depreciation", 10000000))
+    value=float(ai_data.get("depreciation",10000000))
 )
 
 debt = st.number_input(
     "Total Debt",
-    value=float(ai_data.get("total_debt", 200000000))
+    value=float(ai_data.get("total_debt",200000000))
 )
 
-# ---------------------------------------------------
-# AUTO CALCULATIONS
-# ---------------------------------------------------
+
+# ---------------------------------------------------------
+# AUTOMATIC CALCULATIONS
+# ---------------------------------------------------------
 
 ebitda = pbt + finance_cost + depreciation
 
@@ -298,9 +316,10 @@ st.subheader("Calculated Ratios")
 st.write("EBITDA:", round(ebitda,2))
 st.write("Interest Coverage:", round(interest_coverage,2))
 
-# ---------------------------------------------------
-# ADDITIONAL INPUTS
-# ---------------------------------------------------
+
+# ---------------------------------------------------------
+# ADDITIONAL MODEL INPUTS
+# ---------------------------------------------------------
 
 gst = st.slider("GST Mismatch",0.0,0.5,0.1)
 litigation = st.number_input("Litigation Count",value=1)
@@ -310,9 +329,10 @@ capacity = st.slider("Capacity Utilization",0.0,1.0,0.8)
 
 company = st.text_input("Company Name")
 
-# ---------------------------------------------------
+
+# ---------------------------------------------------------
 # RUN MODEL
-# ---------------------------------------------------
+# ---------------------------------------------------------
 
 if st.button("Analyze Credit Risk"):
 
@@ -345,6 +365,7 @@ if st.button("Analyze Credit Risk"):
         prob = model.predict_proba(df)[0][1]
 
     else:
+
         prob = 0.3
 
     prob = max(0,min(prob,1))
@@ -354,6 +375,7 @@ if st.button("Analyze Credit Risk"):
     st.metric("Probability of Default",round(prob,3))
 
     decision = "Approved"
+
     if prob > threshold:
         decision = "Rejected"
 
@@ -362,11 +384,13 @@ if st.button("Analyze Credit Risk"):
     else:
         st.success("Loan Approved")
 
-# ---------------------------------------------------
-# LOAN STRUCTURING
-# ---------------------------------------------------
+
+# ---------------------------------------------------------
+# LOAN RECOMMENDATION
+# ---------------------------------------------------------
 
     max_loan = ebitda * 3.5
+
     loan = max_loan * (1-prob)
 
     rate = 9 + prob*6
@@ -382,13 +406,15 @@ if st.button("Analyze Credit Risk"):
     except:
         pass
 
-# ---------------------------------------------------
-# SHAP EXPLANATION
-# ---------------------------------------------------
+
+# ---------------------------------------------------------
+# SHAP EXPLAINABILITY
+# ---------------------------------------------------------
 
     if explainer:
 
         try:
+
             shap_values = explainer(df)
 
             fig,ax = plt.subplots()
@@ -398,11 +424,13 @@ if st.button("Analyze Credit Risk"):
             st.pyplot(fig)
 
         except:
-            st.warning("Explainability unavailable")
 
-# ---------------------------------------------------
-# CAM
-# ---------------------------------------------------
+            st.warning("Explainability unavailable.")
+
+
+# ---------------------------------------------------------
+# CREDIT MEMO
+# ---------------------------------------------------------
 
     st.subheader("Credit Appraisal Memo")
 
