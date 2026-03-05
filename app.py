@@ -335,7 +335,8 @@ company = st.text_input("Company Name")
 # ---------------------------------------------------------
 # RUN MODEL
 # ---------------------------------------------------------
-
+company = st.text_input("Company Name")
+articles = []
 if st.button("Analyze Credit Risk"):
 
     sentiment, articles = get_news_sentiment(company)
@@ -456,4 +457,5 @@ else:
     cam = generate_cam(company,revenue,ebitda,debt,decision)
 
     st.write(cam)
+
 
