@@ -24,11 +24,9 @@ st.title("IntelliCredit-X | AI Credit Decision Engine")
 # ----------------------------------------------------------
 
 try:
-    # Pull securely from Streamlit Cloud Secrets
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
     GNEWS_API_KEY = st.secrets["GNEWS_API_KEY"]
 except:
-    # Fallback for local testing
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
     GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
 
@@ -38,7 +36,7 @@ else:
     client = None
 
 # ----------------------------------------------------------
-# GEMINI SENTIMENT FUNCTION
+# NEWS SENTIMENT
 # ----------------------------------------------------------
 
 def get_news_sentiment_score(company_name, combined_news_text):
@@ -49,15 +47,16 @@ def get_news_sentiment_score(company_name, combined_news_text):
     prompt = f"""
     You are an expert corporate credit risk analyst.
 
-    Based on the following recent news (last 60 days) about '{company_name}',
-    provide a sentiment score between -1.0 and +1.0.
+    Based on the following recent news about '{company_name}',
+    return a sentiment score between -1.0 and +1.0.
 
     Negative = high credit risk
     Positive = financially strong
+
     Return ONLY the number.
 
     News:
-    "{combined_news_text}"
+    {combined_news_text}
     """
 
     try:
@@ -75,7 +74,45 @@ def get_news_sentiment_score(company_name, combined_news_text):
 
 
 # ----------------------------------------------------------
-# FETCH LAST 60 DAYS NEWS
+# DUE DILIGENCE ANALYSIS
+# ----------------------------------------------------------
+
+def analyze_due_diligence(notes):
+
+    if not notes.strip() or client is None:
+        return 0.0
+
+    prompt = f"""
+    You are a senior credit risk analyst.
+
+    Analyze the following credit officer notes.
+
+    Return a score between -0.3 and +0.3
+
+    Positive = lowers risk
+    Negative = increases risk
+
+    Return ONLY the number.
+
+    Notes:
+    {notes}
+    """
+
+    try:
+        response = client.models.generate_content(
+            model="models/gemini-2.5-flash",
+            contents=prompt
+        )
+
+        number = re.findall(r'-?\d+\.?\d*', response.text)[0]
+        return float(number)
+
+    except:
+        return 0.0
+
+
+# ----------------------------------------------------------
+# FETCH NEWS
 # ----------------------------------------------------------
 
 def fetch_last_60_days_news(company_name):
@@ -97,10 +134,62 @@ def fetch_last_60_days_news(company_name):
     )
 
     try:
-        response = requests.get(url)
-        return response.json().get("articles", [])
+        response = requests.get(url, timeout=10)
+        data = response.json()
+        return data.get("articles", [])
     except:
         return []
+
+
+# ----------------------------------------------------------
+# CREDIT MEMO GENERATOR
+# ----------------------------------------------------------
+
+def generate_cam(company, revenue, ebitda, debt, interest_cov,
+                 sector, mgmt, litigation, sentiment,
+                 loan, rate, decision):
+
+    if client is None:
+        return "AI CAM generation unavailable."
+
+    prompt = f"""
+    Generate a professional Credit Appraisal Memo.
+
+    Company: {company}
+
+    Financials
+    Revenue: {revenue}
+    EBITDA: {ebitda}
+    Debt: {debt}
+    Interest Coverage: {interest_cov}
+
+    Risk Indicators
+    Sector Risk: {sector}
+    Management Quality: {mgmt}
+    Litigation Count: {litigation}
+    News Sentiment Score: {sentiment}
+
+    Recommendation
+    Loan Amount: {loan}
+    Interest Rate: {rate}
+    Decision: {decision}
+
+    Structure the memo using Five Cs of Credit:
+    Character
+    Capacity
+    Capital
+    Conditions
+    Collateral
+    """
+
+    try:
+        response = client.models.generate_content(
+            model="models/gemini-2.5-flash",
+            contents=prompt
+        )
+        return response.text
+    except:
+        return "Unable to generate CAM at the moment."
 
 
 # ----------------------------------------------------------
@@ -133,6 +222,21 @@ feature_names = load_feature_names()
 explainer = load_explainer()
 
 # ----------------------------------------------------------
+# DOCUMENT UPLOAD
+# ----------------------------------------------------------
+
+st.subheader("Upload Supporting Documents")
+
+uploaded_files = st.file_uploader(
+    "Upload Annual Report / GST / Bank Statement",
+    type=["pdf", "xlsx", "csv"],
+    accept_multiple_files=True
+)
+
+if uploaded_files:
+    st.success(f"{len(uploaded_files)} documents uploaded successfully.")
+
+# ----------------------------------------------------------
 # INPUT SECTION
 # ----------------------------------------------------------
 
@@ -153,8 +257,23 @@ with col2:
     mgmt = st.slider("Management Quality", 1.0, 10.0, 7.0)
     capacity = st.slider("Capacity Utilization", 0.0, 1.0, 0.8)
 
+# ----------------------------------------------------------
+# RESEARCH AGENT INPUT
+# ----------------------------------------------------------
+
 st.subheader("External AI News Risk Analysis")
 company_name = st.text_input("Company Name")
+
+# ----------------------------------------------------------
+# DUE DILIGENCE NOTES
+# ----------------------------------------------------------
+
+st.subheader("Primary Due Diligence Notes")
+
+site_visit_notes = st.text_area(
+    "Credit Officer Observations",
+    placeholder="Example: Factory operating at 40% capacity due to demand slowdown."
+)
 
 # ----------------------------------------------------------
 # PREDICTION
@@ -165,37 +284,41 @@ if st.button("🔍 Analyze Credit Risk"):
     articles = []
     sentiment_score = 0.0
 
-    with st.spinner("Fetching last 60 days news and analyzing sentiment..."):
-        articles = fetch_last_60_days_news(company_name)
+    with st.spinner("Fetching news and analyzing sentiment..."):
 
-        combined_news = ""
-        for article in articles:
-            combined_news += article.get("title", "") + ". "
-            combined_news += article.get("description", "") + ". "
+        if company_name.strip() != "":
+            articles = fetch_last_60_days_news(company_name)
 
-        sentiment_score = get_news_sentiment_score(company_name, combined_news)
+            combined_news = ""
+            for article in articles:
+                combined_news += article.get("title", "") + ". "
+                combined_news += article.get("description", "") + ". "
+
+            sentiment_score = get_news_sentiment_score(company_name, combined_news)
+
+    due_diligence_score = analyze_due_diligence(site_visit_notes)
 
     # ------------------------------------------------------
-    # SHOW ARTICLES ANALYZED
+    # NEWS DISPLAY
     # ------------------------------------------------------
 
     st.subheader("News Intelligence Layer")
 
-    article_count = len(articles)
-
-    if article_count > 0:
-        st.success(f"Articles Analyzed (Last 60 Days): {article_count}")
+    if len(articles) > 0:
+        st.success(f"Articles Analyzed: {len(articles)}")
 
         for article in articles:
             title = article.get("title", "No Title")
-            source = article.get("source", {}).get("name", "Unknown Source")
+            source = article.get("source", {}).get("name", "Unknown")
             url = article.get("url", "")
+
             st.markdown(f"• **{source}** – [{title}]({url})")
+
     else:
-        st.warning("No recent news articles found for this company.")
+        st.warning("No recent news articles found.")
 
     # ------------------------------------------------------
-    # ML PREDICTION
+    # MODEL INPUT
     # ------------------------------------------------------
 
     input_data = np.array([[ 
@@ -207,16 +330,23 @@ if st.button("🔍 Analyze Credit Risk"):
     input_df = pd.DataFrame(input_data, columns=feature_names)
 
     prob = model.predict_proba(input_df)[0][1]
+
     prob = prob - (0.05 * sentiment_score)
+    prob = prob - (0.03 * due_diligence_score)
+
     prob = max(0, min(prob, 1))
 
     prediction = int(prob > threshold)
 
+    # ------------------------------------------------------
+    # RISK OUTPUT
+    # ------------------------------------------------------
+
     st.subheader("Risk Assessment")
 
-    st.metric("Probability of Default (PD)", round(prob, 3))
-    st.metric("AI News Sentiment Score (60D)", round(sentiment_score, 2))
-    st.write("Decision Threshold:", round(threshold, 3))
+    st.metric("Probability of Default", round(prob,3))
+    st.metric("News Sentiment", round(sentiment_score,2))
+    st.metric("Due Diligence Adjustment", round(due_diligence_score,2))
 
     if prediction == 1:
         st.error("🚫 HIGH RISK — Loan Rejected")
@@ -224,7 +354,7 @@ if st.button("🔍 Analyze Credit Risk"):
         st.success("✅ LOW RISK — Loan Approved")
 
     # ------------------------------------------------------
-    # LOAN PRICING LOGIC
+    # LOAN STRUCTURING
     # ------------------------------------------------------
 
     max_loan = ebitda * 3.5
@@ -234,34 +364,87 @@ if st.button("🔍 Analyze Credit Risk"):
     risk_premium = prob * 6
     interest_rate = base_rate + risk_premium
 
-    st.subheader("Recommended Terms")
+    st.subheader("Recommended Loan Terms")
 
     formatted_loan = f"{adjusted_loan:,.0f}"
     st.success(f"Recommended Loan Amount: ₹ {formatted_loan}")
-
-    # SAFE WORD CONVERSION (Overflow Protected)
 
     try:
         if adjusted_loan < 1e12:
             loan_in_words = num2words(int(adjusted_loan), lang='en_IN').title()
             st.info(f"Rupees {loan_in_words} Only")
-        else:
-            loan_in_crore = adjusted_loan / 1e7
-            st.info(f"≈ ₹ {loan_in_crore:.2f} Crore")
     except:
-        st.info("Loan amount too large to convert into words.")
+        pass
 
-    st.write("Recommended Interest Rate:", round(interest_rate, 2), "%")
+    st.write("Recommended Interest Rate:", round(interest_rate,2), "%")
 
     # ------------------------------------------------------
-    # SHAP EXPLANATION
+    # RISK DRIVERS
     # ------------------------------------------------------
 
-    st.subheader("Explainability (Why this decision?)")
+    st.subheader("Top Risk Drivers")
 
-    shap_values = explainer(input_df)
+    drivers = []
 
-    fig, ax = plt.subplots()
-    shap.plots.waterfall(shap_values[0], show=False)
+    if debt > revenue:
+        drivers.append("High debt relative to revenue")
 
-    st.pyplot(fig)
+    if interest_cov < 2:
+        drivers.append("Weak interest coverage")
+
+    if litigation > 3:
+        drivers.append("Multiple legal disputes")
+
+    if sentiment_score < -0.3:
+        drivers.append("Negative news sentiment")
+
+    if gst > 0.3:
+        drivers.append("GST mismatch risk")
+
+    if len(drivers) == 0:
+        drivers.append("Financial profile appears stable")
+
+    for d in drivers:
+        st.write("•", d)
+
+    # ------------------------------------------------------
+    # SHAP EXPLAINABILITY
+    # ------------------------------------------------------
+
+    st.subheader("Explainability")
+
+    try:
+        shap_values = explainer(input_df)
+
+        fig, ax = plt.subplots()
+        shap.plots.waterfall(shap_values[0], show=False)
+
+        st.pyplot(fig)
+
+    except:
+        st.warning("Explainability chart unavailable.")
+
+    # ------------------------------------------------------
+    # CREDIT MEMO
+    # ------------------------------------------------------
+
+    st.subheader("Credit Appraisal Memo")
+
+    decision_text = "Approved" if prediction == 0 else "Rejected"
+
+    cam_text = generate_cam(
+        company_name,
+        revenue,
+        ebitda,
+        debt,
+        interest_cov,
+        sector,
+        mgmt,
+        litigation,
+        sentiment_score,
+        adjusted_loan,
+        interest_rate,
+        decision_text
+    )
+
+    st.write(cam_text)
