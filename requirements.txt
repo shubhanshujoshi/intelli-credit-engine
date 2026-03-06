@@ -8,4 +8,5 @@ shap
 requests
 num2words
 pdfplumber
-google-genai
+google-generativeai
+
