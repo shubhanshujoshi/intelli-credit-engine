@@ -1099,6 +1099,17 @@ with tab3:
 
             for w in warnings:
                 st.error(w)
+                # =======================================================
+            # INDUSTRY BENCHMARK COMPARISON
+            # =======================================================
+
+            industry_insights = compare_to_industry(sector, debt_to_equity, interest_coverage)
+
+            if industry_insights:
+                st.subheader("Industry Benchmark Comparison")
+
+                for insight in industry_insights:
+                    st.warning(insight)
             # Decision Roadmap
             st.subheader("Decision Roadmap")
             roadmap = generate_decision_roadmap(
@@ -1171,6 +1182,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
