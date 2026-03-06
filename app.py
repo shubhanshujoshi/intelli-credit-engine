@@ -1049,7 +1049,8 @@ with tab3:
             )
 
 st.markdown("---")
-st.caption("🏦 IntelliCredit-X | Hackathon Solution | Built with Streamlit + Gemini + SHAP")
+st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
