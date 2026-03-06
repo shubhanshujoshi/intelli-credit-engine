@@ -685,6 +685,7 @@ with tab1:
             "Revenue (₹)",
             value=float(ai_data.get("revenue", 500000000)),
             min_value=0.0,
+            max_value=10000000000000.0,
             step=1000000.0
         )
         
@@ -1048,5 +1049,6 @@ with tab3:
 
 st.markdown("---")
 st.caption("🏦 IntelliCredit-X | Hackathon Solution | Built with Streamlit + Gemini + SHAP")
+
 
 
