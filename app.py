@@ -24,7 +24,7 @@ st.set_page_config(
 )
 
 st.title("🏦 IntelliCredit-X | AI Credit Decision Engine")
-st.markdown("*Intelligent Corporate Credit Appraisal System*")
+st.markdown("*AI Powered Credit Risk Analyzer*")
 
 # =======================================================
 # API KEYS
@@ -1050,6 +1050,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
