@@ -783,7 +783,7 @@ with tab2:
         company = st.text_input("Company Name", value="")
         promoter = st.text_input("Promoter Name (Optional)", value="")
         
-        st.subheader("⚖️ Litigation Risk")
+        st.subheader("Litigation Risk")
         litigation = st.number_input(
             "Number of Active Legal Cases",
             value=1,
@@ -1050,6 +1050,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("🏦 IntelliCredit-X | Hackathon Solution | Built with Streamlit + Gemini + SHAP")
+
 
 
 
