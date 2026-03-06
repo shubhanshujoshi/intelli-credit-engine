@@ -31,11 +31,11 @@ st.markdown("*Intelligent Corporate Credit Appraisal System*")
 # =======================================================
 
 try:
-GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
-GNEWS_API_KEY = st.secrets["GNEWS_API_KEY"]
+    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+    GNEWS_API_KEY = st.secrets["GNEWS_API_KEY"]
 except:
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+    GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
 
 client = None
 if GOOGLE_API_KEY:
@@ -1049,4 +1049,5 @@ if st.button("⚡ Analyze & Generate CAM", key="analyze"):
 
 st.markdown("---")
 st.caption("🏦 IntelliCredit-X | Hackathon Solution | Built with Streamlit + Gemini + SHAP")
+
 
