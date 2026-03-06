@@ -1,12 +1,11 @@
 streamlit
 pandas
 numpy
-joblib
 scikit-learn
+joblib
+requests
+pdfplumber
+google-genai
 matplotlib
 shap
-requests
 num2words
-pdfplumber
-google-generativeai
-
