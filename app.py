@@ -788,7 +788,7 @@ with tab2:
             "Number of Active Legal Cases",
             value=1,
             min_value=0.0,
-            step=1.0
+            step=1
         )
         litigation_notes = st.text_area(
             "Litigation Details (e.g., fraud, criminal, NCLT)",
@@ -1049,6 +1049,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("🏦 IntelliCredit-X | Hackathon Solution | Built with Streamlit + Gemini + SHAP")
+
 
 
 
