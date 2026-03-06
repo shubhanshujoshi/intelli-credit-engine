@@ -684,28 +684,28 @@ with tab1:
         revenue = st.number_input(
             "Revenue (₹)",
             value=float(ai_data.get("revenue", 500000000)),
-            min_value=0,
+            min_value=0.0,
             step=1000000.0
         )
         
         pbt = st.number_input(
             "Profit Before Tax (₹)",
             value=float(ai_data.get("profit_before_tax", 50000000)),
-            min_value=0,
+            min_value=0.0,
             step=1000000.0
         )
         
         finance_cost = st.number_input(
             "Finance Cost (₹)",
             value=float(ai_data.get("finance_cost", 10000000)),
-            min_value=0,
+            min_value=0.0,
             step=1000000.0
         )
         
         depreciation = st.number_input(
             "Depreciation (₹)",
             value=float(ai_data.get("depreciation", 10000000)),
-            min_value=0,
+            min_value=0.0,
             step=1000000.0
         )
     
@@ -714,14 +714,14 @@ with tab1:
         total_debt = st.number_input(
             "Total Debt (₹)",
             value=float(ai_data.get("total_debt", 200000000)),
-            min_value=0,
+            min_value=0.0,
             step=1000000.0
         )
         
         equity = st.number_input(
             "Total Equity (₹)",
             value=float(ai_data.get("total_equity", 200000000)),
-            min_value=0,
+            min_value=0.0,
             step=1000000.0
         )
         
@@ -730,7 +730,7 @@ with tab1:
         gst_turnover = st.number_input(
             "GST Turnover (₹)",
             value=revenue * 0.95,
-            min_value=0,
+            min_value=0.0,
             step=1000000.0,
             help="From GST-3B returns"
         )
@@ -738,7 +738,7 @@ with tab1:
         bank_turnover = st.number_input(
             "Bank Statement Turnover (₹)",
             value=revenue,
-            min_value=0,
+            min_value=0.0,
             step=1000000.0,
             help="Total credits from bank statements"
         )
@@ -786,7 +786,7 @@ with tab2:
         litigation = st.number_input(
             "Number of Active Legal Cases",
             value=1,
-            min_value=0,
+            min_value=0.0,
             step=1.0
         )
         litigation_notes = st.text_area(
@@ -1048,4 +1048,5 @@ with tab3:
 
 st.markdown("---")
 st.caption("🏦 IntelliCredit-X | Hackathon Solution | Built with Streamlit + Gemini + SHAP")
+
 
