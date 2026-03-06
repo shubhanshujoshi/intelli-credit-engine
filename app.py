@@ -677,6 +677,69 @@ def calculate_financial_ratios(revenue, ebitda, debt, equity, finance_cost):
 
     return ratios
 # =======================================================
+# EARLY WARNING SIGNAL DETECTION
+# =======================================================
+
+def detect_early_warnings(interest_coverage, debt_to_equity, gst_variance, sentiment):
+
+    warnings = []
+
+    if interest_coverage < 1:
+        warnings.append("⚠ Company unable to cover interest payments")
+
+    if debt_to_equity > 3:
+        warnings.append("⚠ Excessive leverage detected")
+
+    if gst_variance > 0.2:
+        warnings.append("⚠ Possible revenue inflation or circular trading")
+
+    if sentiment < -0.4:
+        warnings.append("⚠ Negative market sentiment detected")
+
+    return warnings
+
+# =======================================================
+# CORPORATE CREDIT SCORE
+# =======================================================
+
+def generate_credit_score(pd_probability):
+
+    score = int(900 - (pd_probability * 600))
+
+    score = max(300, min(score, 900))
+
+    return score
+
+# =======================================================
+# INDUSTRY BENCHMARKS
+# =======================================================
+
+INDUSTRY_BENCHMARKS = {
+    "IT Services": {"Debt/Equity": 0.5, "Interest Coverage": 5},
+    "Manufacturing": {"Debt/Equity": 1.5, "Interest Coverage": 3},
+    "Real Estate": {"Debt/Equity": 2.5, "Interest Coverage": 2},
+    "Retail": {"Debt/Equity": 1.8, "Interest Coverage": 2.5},
+    "Pharma": {"Debt/Equity": 1.0, "Interest Coverage": 4}
+}
+
+def compare_to_industry(sector, debt_to_equity, interest_coverage):
+
+    benchmark = INDUSTRY_BENCHMARKS.get(sector)
+
+    if not benchmark:
+        return []
+
+    insights = []
+
+    if debt_to_equity > benchmark["Debt/Equity"]:
+        insights.append("⚠ Leverage above industry average")
+
+    if interest_coverage < benchmark["Interest Coverage"]:
+        insights.append("⚠ Interest coverage weaker than industry average")
+
+    return insights
+
+# =======================================================
 # UI BEGINS HERE
 # =======================================================
 
@@ -798,6 +861,18 @@ with tab1:
     with metric_col4:
         st.metric("Profit Margin", f"{(pbt/revenue)*100:.1f}%" if revenue > 0 else "N/A")
 
+    # =======================================================
+    # FINANCIAL RATIO DISPLAY
+    # =======================================================
+
+    ratios = calculate_financial_ratios(revenue, ebitda, total_debt, equity, finance_cost)
+
+    st.subheader("Financial Ratio Analysis")
+
+    ratio_cols = st.columns(len(ratios))
+
+    for i, (name, value) in enumerate(ratios.items()):
+        ratio_cols[i].metric(name, f"{value:.2f}")  
 # =======================================================
 # TAB 2: RESEARCH & RISK
 # =======================================================
@@ -949,6 +1024,9 @@ with tab3:
             
             # Display results in columns
             result_col1, result_col2, result_col3 = st.columns(3)
+            credit_score = generate_credit_score(pd_probability)
+
+            st.metric("Corporate Credit Score", credit_score)
             
             with result_col1:
                 if decision == "Approved":
@@ -1004,7 +1082,23 @@ with tab3:
             
             with gst_col3:
                 st.metric("Litigation Severity", litig_risk["severity"])
-            
+
+            # =======================================================
+            # EARLY WARNING SIGNALS
+            # =======================================================
+
+            warnings = detect_early_warnings(
+                interest_coverage,
+                debt_to_equity,
+                gst_check["variance"],
+                sentiment
+            )
+
+            if warnings:
+                st.subheader("Early Warning Signals")
+
+            for w in warnings:
+                st.error(w)
             # Decision Roadmap
             st.subheader("Decision Roadmap")
             roadmap = generate_decision_roadmap(
@@ -1077,6 +1171,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
