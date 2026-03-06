@@ -23,8 +23,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.title("🏦 IntelliCredit-X | AI Credit Decision Engine")
-st.markdown("*AI Powered Credit Risk Analyzer*")
+st.title("🏦 IntelliCredit-X | AI Powered Credit Risk Analyzer")
 
 # =======================================================
 # API KEYS
@@ -1050,6 +1049,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
