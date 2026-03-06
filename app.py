@@ -647,7 +647,35 @@ def calculate_interest_rate(pd_probability, sector, interest_coverage, debt_to_e
         "leverage_premium": leverage_premium,
         "coverage_discount": coverage_discount
     }
+# =======================================================
+# FINANCIAL RATIO ENGINE
+# =======================================================
 
+def calculate_financial_ratios(revenue, ebitda, debt, equity, finance_cost):
+
+    ratios = {}
+
+    if revenue > 0:
+        ratios["EBITDA Margin"] = ebitda / revenue
+    else:
+        ratios["EBITDA Margin"] = 0
+
+    if equity > 0:
+        ratios["Debt to Equity"] = debt / equity
+    else:
+        ratios["Debt to Equity"] = 0
+
+    if finance_cost > 0:
+        ratios["Interest Coverage"] = ebitda / finance_cost
+    else:
+        ratios["Interest Coverage"] = 0
+
+    if debt > 0 and ebitda > 0:
+        ratios["Debt to EBITDA"] = debt / ebitda
+    else:
+        ratios["Debt to EBITDA"] = 0
+
+    return ratios
 # =======================================================
 # UI BEGINS HERE
 # =======================================================
@@ -1049,6 +1077,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
