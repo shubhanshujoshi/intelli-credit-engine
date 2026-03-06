@@ -276,7 +276,7 @@ def get_news_sentiment(company, promoter=None, sector=None):
                 f"&from={start.strftime('%Y-%m-%d')}"
                 f"&to={end.strftime('%Y-%m-%d')}"
                 f"&lang=en"
-                f"&max=3"
+                f"&max=10"
                 f"&apikey={GNEWS_API_KEY}"
             )
             response = requests.get(url, timeout=10)
@@ -1050,6 +1050,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("🏦 IntelliCredit-X | Hackathon Solution | Built with Streamlit + Gemini + SHAP")
+
 
 
 
