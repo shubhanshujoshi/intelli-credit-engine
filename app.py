@@ -680,7 +680,7 @@ with tab1:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📈 Income Statement")
+        st.subheader("Income Statement")
         revenue = st.number_input(
             "Revenue (₹)",
             value=float(ai_data.get("revenue", 500000000)),
@@ -711,7 +711,7 @@ with tab1:
         )
     
     with col2:
-        st.subheader("💰 Balance Sheet")
+        st.subheader("Balance Sheet")
         total_debt = st.number_input(
             "Total Debt (₹)",
             value=float(ai_data.get("total_debt", 200000000)),
@@ -727,7 +727,7 @@ with tab1:
         )
         
         # GST specific validation
-        st.subheader("✅ GST Compliance Check")
+        st.subheader("GST Compliance Check")
         gst_turnover = st.number_input(
             "GST Turnover (₹)",
             value=revenue * 0.95,
@@ -779,7 +779,7 @@ with tab2:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("🏢 Company Details")
+        st.subheader("Company Details")
         company = st.text_input("Company Name", value="")
         promoter = st.text_input("Promoter Name (Optional)", value="")
         
@@ -798,7 +798,7 @@ with tab2:
         )
     
     with col2:
-        st.subheader("📊 Operational Risk")
+        st.subheader("Operational Risk")
         sector = st.selectbox(
             "Industry Sector",
             list(SECTOR_CONFIG.keys()),
@@ -824,7 +824,7 @@ with tab2:
         )
     
     # Fetch news and calculate sentiment
-    st.subheader("📰 News Intelligence")
+    st.subheader("News Intelligence")
     
     if st.button("🔍 Fetch Market News"):
         with st.spinner("Searching news..."):
@@ -864,7 +864,7 @@ with tab2:
 # =======================================================
 
 with tab3:
-    st.subheader("🎯 Credit Decision")
+    st.subheader("Credit Decision")
     
     if st.button("⚡ Analyze & Generate CAM", key="analyze"):
         if not company:
@@ -936,7 +936,7 @@ with tab3:
                 st.metric("PD Probability", f"{pd_probability:.2%}")
             
             # Five Cs Display
-            st.subheader("🎯 Five Cs of Credit Assessment")
+            st.subheader("Five Cs of Credit Assessment")
             
             c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
             
@@ -965,7 +965,7 @@ with tab3:
                     st.metric(f"{status} {c_name}", f"{score:.0f}/100")
             
             # GST Compliance Status
-            st.subheader("📋 GST Compliance Status")
+            st.subheader("GST Compliance Status")
             gst_col1, gst_col2, gst_col3 = st.columns(3)
             
             with gst_col1:
@@ -979,7 +979,7 @@ with tab3:
                 st.metric("Litigation Severity", litig_risk["severity"])
             
             # Decision Roadmap
-            st.subheader("🗺️ Decision Roadmap")
+            st.subheader("Decision Roadmap")
             roadmap = generate_decision_roadmap(
                 decision, pd_probability, five_cs, litig_risk, gst_check,
                 sentiment, interest_coverage, debt_to_equity,
@@ -988,7 +988,7 @@ with tab3:
             st.markdown(roadmap)
             
             # Interest Rate Calculation
-            st.subheader("💳 Loan Recommendation")
+            st.subheader("Loan Recommendation")
             
             rate_details = calculate_interest_rate(
                 pd_probability, sector, interest_coverage, debt_to_equity
@@ -1021,7 +1021,7 @@ with tab3:
             
             # SHAP Explainability
             if explainer:
-                st.subheader("📊 Feature Importance Analysis")
+                st.subheader("Feature Importance Analysis")
                 try:
                     shap_values = explainer(df)
                     fig, ax = plt.subplots(figsize=(10, 6))
@@ -1031,7 +1031,7 @@ with tab3:
                     st.warning("SHAP visualization unavailable")
             
             # CAM Generation
-            st.subheader("📄 Credit Appraisal Memo")
+            st.subheader("Credit Appraisal Memo")
             
             cam = generate_cam(
                 company, revenue, ebitda, total_debt, equity, decision,
@@ -1050,6 +1050,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("🏦 IntelliCredit-X | Hackathon Solution | Built with Streamlit + Gemini + SHAP")
+
 
 
 
