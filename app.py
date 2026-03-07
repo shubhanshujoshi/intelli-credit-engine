@@ -1151,16 +1151,25 @@ with tab3:
                 st.write(f"• Leverage Premium: {rate_details['leverage_premium']:.2f}%")
                 st.write(f"• Coverage Discount: {rate_details['coverage_discount']:.2f}%")
             
+        
             # SHAP Explainability
-            # SHAP Explainability
+           # SHAP Explainability
             if explainer:
                 st.subheader("Feature Importance Analysis")
-                try:
-                    shap_values = explainer(df)
 
-        # create shap waterfall plot
+                try:
+                    shap_values = explainer.shap_values(df)
+
                     fig = plt.figure()
-                    shap.plots.waterfall(shap_values[0], show=False)
+
+                    shap.waterfall_plot(
+                        shap.Explanation(
+                        values=shap_values[1][0],
+                        base_values=explainer.expected_value[1],
+                        data=df.iloc[0],
+                        feature_names=df.columns.tolist()
+            )
+        )
 
                     st.pyplot(fig)
 
@@ -1187,6 +1196,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
