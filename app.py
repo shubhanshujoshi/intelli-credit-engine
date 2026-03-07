@@ -1163,6 +1163,7 @@ with tab3:
                 # waterfall plot
                     shap.plots.waterfall(shap_values[0], show=False)
                 #display shap figure in streamlit
+                    st.pyplot(plt.gcf())
                 #clear figure to prevent overlap    
 
                     plt.clf()
@@ -1171,11 +1172,7 @@ with tab3:
                     
         
 
-                    st.pyplot(fig)
-
-                except Exception as e:
-                    st.warning(e)
-            
+                
             # CAM Generation
             st.subheader("Credit Appraisal Memo")
             
@@ -1196,6 +1193,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
