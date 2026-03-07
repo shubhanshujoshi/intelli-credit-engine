@@ -1038,7 +1038,7 @@ with tab3:
                 st.metric("Risk Rating", risk_rating, delta=risk_description)
             
             with result_col3:
-                st.metric("PD Probability", f"{pd_probability:.2%}")
+                st.metric("Probability of Default (PD)", f"{pd_probability:.2%}")
             
             # Five Cs Display
             st.subheader("Five Cs of Credit Assessment")
@@ -1182,6 +1182,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
