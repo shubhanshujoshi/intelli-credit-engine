@@ -1182,7 +1182,7 @@ cam = generate_cam(
                 five_cs, risk_rating, interest_coverage, pd_probability
             )
             
-            st.markdown(cam)
+st.markdown(cam)
             
             # Download CAM as text
             st.download_button(
@@ -1194,6 +1194,7 @@ cam = generate_cam(
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
