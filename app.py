@@ -1174,7 +1174,7 @@ with tab3:
                     st.pyplot(fig)
 
                 except Exception as e:
-                    st.warning(f"SHAP visualization unavailable: {e}")
+                    st.warning(e)
             
             # CAM Generation
             st.subheader("Credit Appraisal Memo")
@@ -1196,6 +1196,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
