@@ -1158,7 +1158,7 @@ with tab3:
                 st.subheader("Feature Importance Analysis")
 
                 try:
-                    shap_values = explainer.(df)
+                    shap_values = explainer(df)
 
                 # waterfall plot
                     shap.plots.waterfall(shap_values[0], show=False)
@@ -1196,6 +1196,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
