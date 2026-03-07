@@ -1030,9 +1030,9 @@ with tab3:
             
             with result_col1:
                 if decision == "Approved":
-                    st.success(f"✅ {decision}", icon="✅")
+                    st.success(f"{decision}", icon="✅")
                 else:
-                    st.error(f"❌ {decision}", icon="❌")
+                    st.error(f"{decision}", icon="❌")
             
             with result_col2:
                 st.metric("Risk Rating", risk_rating, delta=risk_description)
@@ -1182,6 +1182,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
