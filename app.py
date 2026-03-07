@@ -1185,7 +1185,7 @@ cam = generate_cam(
 st.markdown(cam)
             
             # Download CAM as text
-            st.download_button(
+st.download_button(
                 label="⬇️ Download CAM",
                 data=cam,
                 file_name=f"{company}_CAM_{datetime.now().strftime('%Y%m%d')}.md",
@@ -1194,6 +1194,7 @@ st.markdown(cam)
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
