@@ -1152,15 +1152,20 @@ with tab3:
                 st.write(f"• Coverage Discount: {rate_details['coverage_discount']:.2f}%")
             
             # SHAP Explainability
+            # SHAP Explainability
             if explainer:
                 st.subheader("Feature Importance Analysis")
                 try:
                     shap_values = explainer(df)
-                    fig, ax = plt.subplots(figsize=(10, 6))
+
+        # create shap waterfall plot
+                    fig = plt.figure()
                     shap.plots.waterfall(shap_values[0], show=False)
+
                     st.pyplot(fig)
-                except:
-                    st.warning("SHAP visualization unavailable")
+
+        except Exception as e:
+                    st.warning(f"SHAP visualization unavailable: {e}")
             
             # CAM Generation
             st.subheader("Credit Appraisal Memo")
@@ -1182,6 +1187,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
