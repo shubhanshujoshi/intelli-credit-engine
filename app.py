@@ -75,7 +75,7 @@ def load_features():
 def load_explainer():
     try:
         model = joblib.load(os.path.join(BASE_DIR,"financial_model.pkl"))
-        return shap.Explainer(model)
+        return shap.TreeExplainer(model)
     except:
         return None
 
@@ -1151,41 +1151,29 @@ with tab3:
                 st.write(f"• Leverage Premium: {rate_details['leverage_premium']:.2f}%")
                 st.write(f"• Coverage Discount: {rate_details['coverage_discount']:.2f}%")
             
-        
             # SHAP Explainability
-           # SHAP Explainability
-            # SHAP Explainability
-if explainer:
-    st.subheader("Feature Importance Analysis")
-
-    try:
-        shap_values = explainer(df)
-
-        # create waterfall plot
-        shap.plots.waterfall(shap_values[0], show=False)
-
-        # display figure in streamlit
-        st.pyplot(plt.gcf())
-
-        # clear figure to avoid overlap
-        plt.clf()
-
-    except Exception as e:
-        st.warning(f"SHAP visualization unavailable: {e}")
-
-
-# CAM Generation
-st.subheader("Credit Appraisal Memo")
+            if explainer:
+                st.subheader("Feature Importance Analysis")
+                try:
+                    shap_values = explainer(df)
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    shap.plots.waterfall(shap_values[0], show=False)
+                    st.pyplot(fig)
+                except:
+                    st.warning("SHAP visualization unavailable")
             
-cam = generate_cam(
+            # CAM Generation
+            st.subheader("Credit Appraisal Memo")
+            
+            cam = generate_cam(
                 company, revenue, ebitda, total_debt, equity, decision,
                 five_cs, risk_rating, interest_coverage, pd_probability
             )
             
-st.markdown(cam)
+            st.markdown(cam)
             
             # Download CAM as text
-st.download_button(
+            st.download_button(
                 label="⬇️ Download CAM",
                 data=cam,
                 file_name=f"{company}_CAM_{datetime.now().strftime('%Y%m%d')}.md",
@@ -1194,18 +1182,6 @@ st.download_button(
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
