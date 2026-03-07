@@ -1158,18 +1158,18 @@ with tab3:
                 st.subheader("Feature Importance Analysis")
 
                 try:
-                    shap_values = explainer.shap_values(df)
+                    shap_values = explainer.(df)
 
-                    fig = plt.figure()
+                # waterfall plot
+                    shap.plots.waterfall(shap_values[0], show=False)
+                #display shap figure in streamlit
+                #clear figure to prevent overlap    
 
-                    shap.waterfall_plot(
-                        shap.Explanation(
-                        values=shap_values[1][0],
-                        base_values=explainer.expected_value[1],
-                        data=df.iloc[0],
-                        feature_names=df.columns.tolist()
-            )
-        )
+                    plt.clf()
+                 except Exception as e:
+                    st.warning(f"SHAP visualization unavailable: {e}")   
+                    
+        
 
                     st.pyplot(fig)
 
@@ -1196,6 +1196,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
