@@ -1171,13 +1171,13 @@ if explainer:
         plt.clf()
 
     except Exception as e:
-    st.warning(f"SHAP visualization unavailable: {e}")
+        st.warning(f"SHAP visualization unavailable: {e}")
 
 
 # CAM Generation
 st.subheader("Credit Appraisal Memo")
             
-            cam = generate_cam(
+cam = generate_cam(
                 company, revenue, ebitda, total_debt, equity, decision,
                 five_cs, risk_rating, interest_coverage, pd_probability
             )
@@ -1194,6 +1194,7 @@ st.subheader("Credit Appraisal Memo")
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
