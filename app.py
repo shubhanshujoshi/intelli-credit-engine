@@ -1154,25 +1154,24 @@ with tab3:
         
             # SHAP Explainability
            # SHAP Explainability
-            if explainer:
-                st.subheader("Feature Importance Analysis")
+            # SHAP Explainability
+if explainer:
+    st.subheader("Feature Importance Analysis")
 
-                try:
-                    shap_values = explainer(df)
+    try:
+        shap_values = explainer(df)
 
-                # waterfall plot
-                    shap.plots.waterfall(shap_values[0], show=False)
-                #display shap figure in streamlit
-                    st.pyplot(plt.gcf())
-                #clear figure to prevent overlap    
+        # create waterfall plot
+        shap.plots.waterfall(shap_values[0], show=False)
 
-                    plt.clf()
-                 except Exception as e:
-                    st.warning(f"SHAP visualization unavailable: {e}")   
-                    
-        
+        # display figure in streamlit
+        st.pyplot(plt.gcf())
 
-                
+        # clear figure to avoid overlap
+        plt.clf()
+
+    except Exception as e:
+        st.warning(f"SHAP visualization unavailable: {e}")
             # CAM Generation
             st.subheader("Credit Appraisal Memo")
             
@@ -1193,6 +1192,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
