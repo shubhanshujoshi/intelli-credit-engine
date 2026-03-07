@@ -75,7 +75,7 @@ def load_features():
 def load_explainer():
     try:
         model = joblib.load(os.path.join(BASE_DIR,"financial_model.pkl"))
-        return shap.TreeExplainer(model)
+        return shap.Explainer(model)
     except:
         return None
 
@@ -1187,6 +1187,7 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
 
 
 
