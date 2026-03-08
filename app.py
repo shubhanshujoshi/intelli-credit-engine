@@ -1151,16 +1151,84 @@ with tab3:
                 st.write(f"• Leverage Premium: {rate_details['leverage_premium']:.2f}%")
                 st.write(f"• Coverage Discount: {rate_details['coverage_discount']:.2f}%")
             
-            # SHAP Explainability
-            if explainer:
-                st.subheader("Feature Importance Analysis")
+            # ========================================================
+            # SHAP EXPLAINABILITY (Optimized for Streamlit Cloud)
+            # ========================================================
+            
+            if explainer and model and feature_names:
+                st.subheader("🔍 Feature Importance Analysis (SHAP Waterfall)")
+                
                 try:
+                    # Compute SHAP values
                     shap_values = explainer(df)
-                    fig, ax = plt.subplots(figsize=(10, 6))
-                    shap.plots.waterfall(shap_values[0], show=False)
-                    st.pyplot(fig)
-                except:
-                    st.warning("SHAP visualization unavailable")
+                    
+                    # Extract values
+                    base_value = explainer.expected_value
+                    shap_val = shap_values[0].values
+                    feature_vals = df.iloc[0].values
+                    
+                    # Create waterfall manually (lightweight & Streamlit-friendly)
+                    fig, ax = plt.subplots(figsize=(12, 7))
+                    
+                    # Get top 10 features by absolute SHAP value for clarity
+                    indices = np.argsort(np.abs(shap_val))[::-1][:10]
+                    
+                    sorted_features = [feature_names[i] for i in indices]
+                    sorted_shap = shap_val[indices]
+                    sorted_vals = feature_vals[indices]
+                    
+                    # Build cumulative values for waterfall effect
+                    cumulative = np.zeros(len(sorted_features) + 1)
+                    cumulative[0] = base_value
+                    
+                    for i in range(len(sorted_features)):
+                        cumulative[i + 1] = cumulative[i] + sorted_shap[i]
+                    
+                    # Color code: red for negative (risk), green for positive (safety)
+                    colors = ['#d62728' if x < 0 else '#2ca02c' for x in sorted_shap]
+                    
+                    # Plot horizontal bars for waterfall
+                    for i, (feature, shap_val_i, cumul_val) in enumerate(zip(sorted_features, sorted_shap, cumulative[:-1])):
+                        ax.barh(i, shap_val_i, left=cumul_val, color=colors[i], alpha=0.8, 
+                               edgecolor='black', linewidth=0.5)
+                        
+                        # Add value labels on bars
+                        label_x = cumul_val + shap_val_i / 2
+                        ax.text(label_x, i, f'{shap_val_i:.4f}', ha='center', va='center', 
+                               fontsize=9, fontweight='bold', color='white')
+                    
+                    # Reference lines for interpretation
+                    ax.axvline(x=base_value, color='blue', linestyle='--', linewidth=2.5, 
+                              label=f'Base Value (Expected): {base_value:.4f}', alpha=0.7)
+                    ax.axvline(x=cumulative[-1], color='red', linestyle='--', linewidth=2.5, 
+                              label=f'Model Prediction: {cumulative[-1]:.4f}', alpha=0.7)
+                    
+                    # Formatting
+                    ax.set_yticks(range(len(sorted_features)))
+                    ax.set_yticklabels(sorted_features, fontsize=10)
+                    ax.set_xlabel('SHAP Value Contribution', fontsize=11, fontweight='bold')
+                    ax.set_title('SHAP Waterfall Plot - Top 10 Feature Contributions to Default Risk', 
+                                fontsize=13, fontweight='bold', pad=20)
+                    ax.legend(loc='best', fontsize=10)
+                    ax.grid(axis='x', alpha=0.3, linestyle='--')
+                    
+                    plt.tight_layout()
+                    st.pyplot(fig, use_container_width=True)
+                    plt.close(fig)  # CRITICAL: Free memory immediately
+                    
+                    # Add interpretation guide
+                    with st.expander("📖 How to interpret this waterfall"):
+                        st.info("""
+                        - **Blue dashed line**: Expected default probability baseline
+                        - **Red dashed line**: Final model prediction for this company
+                        - **Green bars**: Factors reducing default risk (safer)
+                        - **Red bars**: Factors increasing default risk (riskier)
+                        - **Bar length**: Magnitude of impact on prediction
+                        """)
+                    
+                except Exception as e:
+                    st.error(f"⚠️ SHAP visualization error: {str(e)}")
+                    st.caption("Ensure TreeExplainer is properly initialized with training data")
             
             # CAM Generation
             st.subheader("Credit Appraisal Memo")
@@ -1182,21 +1250,3 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
