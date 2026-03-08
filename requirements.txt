@@ -9,3 +9,10 @@ google-genai
 matplotlib
 shap
 num2words
+scipy
+matplotlib-inline
+pypdf
+requests-cache
+python-dotenv
+pyarrow
+Pillow
