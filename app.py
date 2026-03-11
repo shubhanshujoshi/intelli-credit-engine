@@ -4,6 +4,8 @@ import numpy as np
 import joblib
 import shap
 import json
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import os
 import re
@@ -140,58 +142,46 @@ SECTOR_CONFIG = {
 # FIVE Cs OF CREDIT FRAMEWORK
 # =======================================================
 
-def calculate_five_cs(revenue, pbt, debt, equity, litigation, sentiment, 
+def calculate_five_cs(revenue, pbt, debt, equity, litigation, sentiment,
                       management_quality, capacity_util, gst_variance, sector_risk):
-    """
-    Calculate the Five Cs of Credit:
-    Character, Capacity, Capital, Collateral, Conditions
-    Returns dict with scores (0-100) for each C
-    """
-    
     scores = {}
-    
-    # 1. CHARACTER: Integrity, compliance, litigation
+
     character_score = 100
-    character_score -= (litigation * 5)  # Each case = -5 points
-    character_score -= (max(0, gst_variance - 0.1) * 100)  # GST mismatch penalty
-    character_score = max(0, character_score) + (sentiment * 10)  # News sentiment boost/penalty
+    character_score -= (litigation * 5)
+    character_score -= (max(0, gst_variance - 0.1) * 100)
+    character_score = max(0, character_score) + (sentiment * 10)
     scores["Character"] = min(100, max(0, character_score))
-    
-    # 2. CAPACITY: Ability to generate cash flow
+
     if revenue > 0:
         profit_margin = (pbt / revenue) * 100
     else:
         profit_margin = 0
-    
-    capacity_score = 50 + (min(profit_margin, 15) * 2)  # Profit margin weight
-    capacity_score += (capacity_util * 20)  # Utilization weight
+
+    capacity_score = 50 + (min(profit_margin, 15) * 2)
+    capacity_score += (capacity_util * 20)
     scores["Capacity"] = min(100, max(0, capacity_score))
-    
-    # 3. CAPITAL: Equity strength & debt burden
+
     if equity > 0:
         debt_to_equity = debt / equity
     else:
-        debt_to_equity = 10  # Penalize zero equity
-    
+        debt_to_equity = 10
+
     capital_score = 100 - (debt_to_equity * 10)
-    capital_score += (management_quality * 3)  # Management bonus
+    capital_score += (management_quality * 3)
     scores["Capital"] = min(100, max(0, capital_score))
-    
-    # 4. COLLATERAL: Asset coverage
-    # Proxy: Assume assets = debt + equity
+
     total_assets = debt + equity
     if total_assets > 0:
         collateral_ratio = total_assets / debt if debt > 0 else 2.0
     else:
         collateral_ratio = 1.0
-    
-    collateral_score = min(collateral_ratio, 3.0) * 33.33  # Cap at 3x
+
+    collateral_score = min(collateral_ratio, 3.0) * 33.33
     scores["Collateral"] = min(100, max(0, collateral_score))
-    
-    # 5. CONDITIONS: Macro environment & sector headwinds
-    conditions_score = 100 - (sector_risk * 40)  # Sector risk weight
+
+    conditions_score = 100 - (sector_risk * 40)
     scores["Conditions"] = min(100, max(0, conditions_score))
-    
+
     return scores
 
 # =======================================================
@@ -252,11 +242,6 @@ Text:
 # =======================================================
 
 def get_news_sentiment(company, promoter=None, sector=None):
-    """
-    Multi-tier news search: Company + Promoter + Sector
-    Returns sentiment score and articles
-    """
-    
     if not GNEWS_API_KEY:
         return 0, []
 
@@ -266,7 +251,6 @@ def get_news_sentiment(company, promoter=None, sector=None):
     all_articles = []
     combined_text = ""
 
-    # Search 1: Company News
     if company:
         try:
             url = (
@@ -286,7 +270,6 @@ def get_news_sentiment(company, promoter=None, sector=None):
         except:
             pass
 
-    # Search 2: Promoter News (if available)
     if promoter and len(promoter.strip()) > 0:
         try:
             url = (
@@ -306,7 +289,6 @@ def get_news_sentiment(company, promoter=None, sector=None):
         except:
             pass
 
-    # Search 3: Sector News
     if sector:
         try:
             sector_keywords = SECTOR_CONFIG.get(sector, {}).get("headwinds", "")
@@ -328,7 +310,6 @@ def get_news_sentiment(company, promoter=None, sector=None):
         except:
             pass
 
-    # Calculate sentiment
     sentiment = 0
     if client and combined_text != "":
         prompt = f"""
@@ -349,7 +330,6 @@ News:
         except:
             pass
 
-    # Remove duplicates
     seen = set()
     unique_articles = []
     for a in all_articles:
@@ -358,27 +338,24 @@ News:
             seen.add(url)
             unique_articles.append(a)
 
-    return max(-1, min(sentiment, 1)), unique_articles[:5]  # Top 5 unique articles
+    return max(-1, min(sentiment, 1)), unique_articles[:5]
 
 # =======================================================
 # LITIGATION RISK ASSESSMENT
 # =======================================================
 
 def assess_litigation_risk(litigation_count, litigation_notes=""):
-    """
-    Simple litigation risk scoring based on count and severity
-    """
-    base_risk = min(litigation_count * 0.1, 0.5)  # Cap at 50%
-    
+    base_risk = min(litigation_count * 0.1, 0.5)
+
     severity_keywords = ["fraud", "criminal", "writ petition", "nclt"]
     severity_penalty = 0
     if litigation_notes:
         for keyword in severity_keywords:
             if keyword.lower() in litigation_notes.lower():
                 severity_penalty += 0.15
-    
+
     total_risk = min(base_risk + severity_penalty, 0.8)
-    
+
     return {
         "risk_score": total_risk,
         "severity": "High" if total_risk > 0.5 else "Medium" if total_risk > 0.2 else "Low",
@@ -390,9 +367,6 @@ def assess_litigation_risk(litigation_count, litigation_notes=""):
 # =======================================================
 
 def validate_gst_compliance(gst_turnover, bank_statement_turnover, gst_variance_input):
-    """
-    Validate GST against bank statements for circular trading detection
-    """
     if gst_turnover > 0 and bank_statement_turnover > 0:
         actual_variance = abs(gst_turnover - bank_statement_turnover) / gst_turnover
     else:
@@ -407,7 +381,7 @@ def validate_gst_compliance(gst_turnover, bank_statement_turnover, gst_variance_
     elif actual_variance > 0.1:
         flags.append("⚠️ Moderate variance between GST and bank statements (10-20%)")
         risk_level = "Medium"
-    
+
     return {
         "variance": actual_variance,
         "flags": flags,
@@ -419,9 +393,6 @@ def validate_gst_compliance(gst_turnover, bank_statement_turnover, gst_variance_
 # =======================================================
 
 def calculate_risk_rating(pd_probability):
-    """
-    Convert PD probability to standard credit rating
-    """
     if pd_probability < 0.02:
         return "AAA", "Minimal Credit Risk"
     elif pd_probability < 0.05:
@@ -438,107 +409,90 @@ def calculate_risk_rating(pd_probability):
         return "C", "Extremely High Credit Risk"
 
 # =======================================================
-# DECISION ROADMAP (Human-Readable Explanation)
+# DECISION ROADMAP
 # =======================================================
 
-def generate_decision_roadmap(decision, pd_probability, five_cs_scores, 
-                             litigation_risk, gst_check, sentiment, 
-                             interest_coverage, debt_to_equity, sector_headwinds):
-    """
-    Generate human-readable explanation of credit decision
-    """
-    
+def generate_decision_roadmap(decision, pd_probability, five_cs_scores,
+                               litigation_risk, gst_check, sentiment,
+                               interest_coverage, debt_to_equity, sector_headwinds):
     roadmap = []
-    
+
     if decision == "Rejected":
         roadmap.append("**❌ LOAN REJECTED**\n")
     else:
         roadmap.append("**✅ LOAN APPROVED**\n")
-    
+
     roadmap.append(f"**Probability of Default**: {pd_probability:.2%}\n")
-    
-    # Key risk factors
+
     risk_factors = []
-    
-    # Check each C
+
     for c_name, c_score in five_cs_scores.items():
         if c_score < 40:
             risk_factors.append(f"• **{c_name}**: CRITICAL (Score: {c_score:.0f}/100)")
         elif c_score < 60:
             risk_factors.append(f"• **{c_name}**: WEAK (Score: {c_score:.0f}/100)")
-    
-    # Litigation
+
     if litigation_risk["severity"] == "High":
         risk_factors.append(f"• **Litigation Risk**: HIGH ({litigation_risk['count']} active cases)")
     elif litigation_risk["severity"] == "Medium":
         risk_factors.append(f"• **Litigation Risk**: MEDIUM ({litigation_risk['count']} cases)")
-    
-    # GST
+
     if gst_check["risk_level"] == "High":
         risk_factors.append(f"• **GST Compliance**: HIGH variance ({gst_check['variance']:.1%})")
     elif gst_check["risk_level"] == "Medium":
         risk_factors.append(f"• **GST Compliance**: MEDIUM variance ({gst_check['variance']:.1%})")
-    
-    # Interest coverage
+
     if interest_coverage < 1.0:
         risk_factors.append(f"• **Interest Coverage**: CRITICAL ({interest_coverage:.2f}x < 1.0x minimum)")
     elif interest_coverage < 1.5:
         risk_factors.append(f"• **Interest Coverage**: WEAK ({interest_coverage:.2f}x)")
-    
-    # Debt-to-equity
+
     if debt_to_equity > 3.0:
         risk_factors.append(f"• **Debt/Equity**: HIGH LEVERAGE ({debt_to_equity:.2f}x)")
     elif debt_to_equity > 2.0:
         risk_factors.append(f"• **Debt/Equity**: ELEVATED ({debt_to_equity:.2f}x)")
-    
-    # Sentiment
+
     if sentiment < -0.5:
         risk_factors.append(f"• **Market Sentiment**: VERY NEGATIVE (Score: {sentiment:.2f})")
     elif sentiment < -0.2:
         risk_factors.append(f"• **Market Sentiment**: NEGATIVE (Score: {sentiment:.2f})")
-    
+
     if risk_factors:
         roadmap.append("\n**Key Risk Factors:**\n")
-        for factor in risk_factors[:5]:  # Top 5 factors
+        for factor in risk_factors[:5]:
             roadmap.append(factor + "\n")
-    
-    # Positive factors
+
     positive_factors = []
-    
+
     for c_name, c_score in five_cs_scores.items():
         if c_score > 80:
             positive_factors.append(f"• **{c_name}**: STRONG (Score: {c_score:.0f}/100)")
-    
+
     if interest_coverage >= 2.0:
         positive_factors.append(f"• **Interest Coverage**: HEALTHY ({interest_coverage:.2f}x)")
-    
+
     if gst_check["risk_level"] == "Low":
         positive_factors.append(f"• **GST Compliance**: GOOD (Variance: {gst_check['variance']:.1%})")
-    
+
     if sentiment > 0.3:
         positive_factors.append(f"• **Market Sentiment**: POSITIVE (Score: {sentiment:.2f})")
-    
+
     if positive_factors:
         roadmap.append("\n**Strengths:**\n")
         for factor in positive_factors:
             roadmap.append(factor + "\n")
-    
-    # Sector headwinds
+
     if sector_headwinds:
         roadmap.append(f"\n**Sector Context**: {sector_headwinds}\n")
-    
+
     return "".join(roadmap)
 
 # =======================================================
 # ENHANCED CAM GENERATION
 # =======================================================
 
-def generate_cam(company, revenue, ebitda, debt, equity, decision, 
+def generate_cam(company, revenue, ebitda, debt, equity, decision,
                  five_cs_scores, risk_rating, interest_coverage, pd_probability):
-    """
-    Generate comprehensive Credit Appraisal Memo using Five Cs framework
-    """
-    
     if not client:
         return f"""
 # CREDIT APPRAISAL MEMO
@@ -602,24 +556,14 @@ Create a concise (max 300 words) Credit Appraisal Memo covering:
         return f"CAM generation unavailable."
 
 # =======================================================
-# INTEREST RATE CALCULATION (Enhanced)
+# INTEREST RATE CALCULATION
 # =======================================================
 
 def calculate_interest_rate(pd_probability, sector, interest_coverage, debt_to_equity):
-    """
-    Calculate interest rate using multiple risk factors
-    Base + PD Premium + Sector Premium + Leverage Premium
-    """
-    
     base_rate = 9.0
-    
-    # PD Premium (2-4%)
     pd_premium = pd_probability * 4
-    
-    # Sector Premium (0-2%)
     sector_premium = SECTOR_CONFIG.get(sector, {}).get("regulatory_risk", 0.5) * 2
-    
-    # Leverage Premium (0-1.5%)
+
     if debt_to_equity > 3.0:
         leverage_premium = 1.5
     elif debt_to_equity > 2.0:
@@ -628,31 +572,30 @@ def calculate_interest_rate(pd_probability, sector, interest_coverage, debt_to_e
         leverage_premium = 0.5
     else:
         leverage_premium = 0.0
-    
-    # Interest coverage discount (-0.5 to 0%)
+
     if interest_coverage > 3.0:
         coverage_discount = -0.5
     elif interest_coverage > 2.0:
         coverage_discount = -0.25
     else:
         coverage_discount = 0.0
-    
+
     total_rate = base_rate + pd_premium + sector_premium + leverage_premium + coverage_discount
-    
+
     return {
-        "total_rate": max(7.0, min(total_rate, 20.0)),  # Cap between 7-20%
+        "total_rate": max(7.0, min(total_rate, 20.0)),
         "base_rate": base_rate,
         "pd_premium": pd_premium,
         "sector_premium": sector_premium,
         "leverage_premium": leverage_premium,
         "coverage_discount": coverage_discount
     }
+
 # =======================================================
 # FINANCIAL RATIO ENGINE
 # =======================================================
 
 def calculate_financial_ratios(revenue, ebitda, debt, equity, finance_cost):
-
     ratios = {}
 
     if revenue > 0:
@@ -676,12 +619,12 @@ def calculate_financial_ratios(revenue, ebitda, debt, equity, finance_cost):
         ratios["Debt to EBITDA"] = 0
 
     return ratios
+
 # =======================================================
 # EARLY WARNING SIGNAL DETECTION
 # =======================================================
 
 def detect_early_warnings(interest_coverage, debt_to_equity, gst_variance, sentiment):
-
     warnings = []
 
     if interest_coverage < 1:
@@ -703,11 +646,8 @@ def detect_early_warnings(interest_coverage, debt_to_equity, gst_variance, senti
 # =======================================================
 
 def generate_credit_score(pd_probability):
-
     score = int(900 - (pd_probability * 600))
-
     score = max(300, min(score, 900))
-
     return score
 
 # =======================================================
@@ -723,7 +663,6 @@ INDUSTRY_BENCHMARKS = {
 }
 
 def compare_to_industry(sector, debt_to_equity, interest_coverage):
-
     benchmark = INDUSTRY_BENCHMARKS.get(sector)
 
     if not benchmark:
@@ -740,12 +679,179 @@ def compare_to_industry(sector, debt_to_equity, interest_coverage):
     return insights
 
 # =======================================================
+# SHAP WATERFALL CHART — ALWAYS RENDERS
+# Works with real XGBoost model OR falls back to
+# rule-based simulation if model files are missing
+# =======================================================
+
+def render_shap_waterfall(df, input_values, pd_probability, feature_names_list,
+                          explainer_obj, model_obj):
+    """
+    Renders a SHAP waterfall chart.
+    - If real explainer is available: uses actual SHAP values
+    - If not: simulates interpretable contributions from raw inputs
+    """
+
+    st.subheader("🔍 Feature Importance Analysis (SHAP Waterfall)")
+
+    # ── CASE 1: Real SHAP from XGBoost ──────────────────────────────────────
+    if explainer_obj is not None and model_obj is not None and df is not None:
+        try:
+            shap_values = explainer_obj(df)
+
+            # Handle base_value being list (binary XGBoost classifier)
+            base_value = explainer_obj.expected_value
+            if isinstance(base_value, (list, np.ndarray)):
+                base_value = float(base_value[1])
+            else:
+                base_value = float(base_value)
+
+            # Handle shap values being 2D (binary classifier returns both classes)
+            raw_shap = shap_values[0].values
+            if raw_shap.ndim == 2:
+                raw_shap = raw_shap[:, 1]
+
+            feature_vals = df.iloc[0].values
+
+            # Top 10 by absolute magnitude
+            indices = np.argsort(np.abs(raw_shap))[::-1][:10]
+            sorted_features = [feature_names_list[i] for i in indices]
+            sorted_shap    = raw_shap[indices]
+            sorted_vals    = feature_vals[indices]
+
+            _draw_waterfall(sorted_features, sorted_shap, sorted_vals, base_value, source="XGBoost SHAP")
+            return
+
+        except Exception as e:
+            st.warning(f"Real SHAP failed ({e}). Showing rule-based interpretation instead.")
+
+    # ── CASE 2: Simulated interpretable contributions ────────────────────────
+    # Build proxy SHAP values from the 10 input features using domain logic.
+    # Signs and magnitudes are meaningful and match credit risk intuition.
+
+    rev, ebitda_val, debt, ic, gst_var, litig, sent, sec_risk, mgmt, cap_util = input_values
+
+    base_value = 0.30  # Approximate dataset average PD
+
+    feature_display = [
+        "Litigation Cases",
+        "GST Variance",
+        "Interest Coverage",
+        "Sector Risk",
+        "Sentiment Score",
+        "Debt (Total)",
+        "Management Quality",
+        "Capacity Utilization",
+        "EBITDA",
+        "Revenue"
+    ]
+
+    # Each contribution: positive = increases default risk, negative = reduces it
+    contrib = np.array([
+        litig * 0.005,                              # More cases → higher risk
+        gst_var * 0.3,                              # Higher variance → higher risk
+        -min(ic, 10) * 0.015,                       # Higher coverage → lower risk
+        sec_risk * 0.08,                            # Higher sector risk → higher risk
+        -sent * 0.04,                               # Positive news → lower risk
+        (debt / max(rev, 1)) * 0.02,               # Higher leverage → higher risk
+        -(mgmt / 10) * 0.04,                        # Better mgmt → lower risk
+        -(cap_util) * 0.03,                         # Higher utilization → lower risk
+        -(ebitda_val / max(rev, 1)) * 0.05,        # Higher EBITDA margin → lower risk
+        -(min(rev, 1e10) / 1e9) * 0.01             # Larger revenue → slightly lower risk
+    ])
+
+    # Scale contributions so they sum to (pd_probability - base_value)
+    total_contrib = contrib.sum()
+    actual_gap    = pd_probability - base_value
+    if abs(total_contrib) > 1e-6:
+        contrib = contrib * (actual_gap / total_contrib)
+
+    raw_values = [litig, gst_var, ic, sec_risk, sent, debt, mgmt, cap_util, ebitda_val, rev]
+
+    # Sort by absolute contribution
+    indices = np.argsort(np.abs(contrib))[::-1][:10]
+    sorted_features = [feature_display[i] for i in indices]
+    sorted_shap     = contrib[indices]
+    sorted_vals     = [raw_values[i] for i in indices]
+
+    _draw_waterfall(sorted_features, sorted_shap, sorted_vals, base_value,
+                    source="Rule-Based Interpretation")
+
+
+def _draw_waterfall(sorted_features, sorted_shap, sorted_vals, base_value, source="SHAP"):
+    """
+    Core waterfall drawing — shared by both real SHAP and simulated paths.
+    """
+    n = len(sorted_features)
+
+    # Build cumulative waterfall positions
+    cumulative = np.zeros(n + 1)
+    cumulative[0] = base_value
+    for i in range(n):
+        cumulative[i + 1] = cumulative[i] + sorted_shap[i]
+
+    final_pred = cumulative[-1]
+
+    colors = ['#d62728' if x > 0 else '#2ca02c' for x in sorted_shap]
+
+    fig, ax = plt.subplots(figsize=(13, 7))
+    fig.patch.set_facecolor('#0f1117')
+    ax.set_facecolor('#0f1117')
+
+    for i, (feat, sv, cv) in enumerate(zip(sorted_features, sorted_shap, cumulative[:-1])):
+        bar = ax.barh(i, sv, left=cv, color=colors[i], alpha=0.88,
+                      edgecolor='white', linewidth=0.4, height=0.6)
+        mid = cv + sv / 2
+        ax.text(mid, i, f'{sv:+.4f}', ha='center', va='center',
+                fontsize=8.5, fontweight='bold', color='white')
+
+    # Connector lines between bars
+    for i in range(n - 1):
+        ax.plot([cumulative[i + 1], cumulative[i + 1]],
+                [i + 0.3, i + 0.7], color='white', linewidth=0.6, alpha=0.4)
+
+    # Reference lines
+    ax.axvline(x=base_value, color='#00bfff', linestyle='--', linewidth=2,
+               label=f'Baseline PD: {base_value:.4f}', alpha=0.85)
+    ax.axvline(x=final_pred, color='#ff4444', linestyle='--', linewidth=2,
+               label=f'Predicted PD: {final_pred:.4f}', alpha=0.85)
+
+    # Styling
+    ax.set_yticks(range(n))
+    ax.set_yticklabels(sorted_features, fontsize=10, color='white')
+    ax.set_xlabel('Contribution to Default Probability', fontsize=11,
+                  fontweight='bold', color='white')
+    ax.set_title(f'SHAP Waterfall — Top Feature Contributions to Default Risk\n({source})',
+                 fontsize=12, fontweight='bold', color='white', pad=14)
+    ax.tick_params(colors='white')
+    ax.spines['bottom'].set_color('#444')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_color('#444')
+    ax.grid(axis='x', alpha=0.15, linestyle='--', color='white')
+    ax.legend(loc='lower right', fontsize=9, facecolor='#1e1e2e',
+              labelcolor='white', framealpha=0.8)
+
+    plt.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
+
+    with st.expander("📖 How to interpret this chart"):
+        st.markdown("""
+- **Blue dashed line** — Baseline: average default probability across the dataset  
+- **Red dashed line** — Final predicted default probability for this company  
+- 🔴 **Red bars** — Features *increasing* default risk (pushing PD higher)  
+- 🟢 **Green bars** — Features *reducing* default risk (pushing PD lower)  
+- **Bar length** — Magnitude of impact; longer = stronger influence on the prediction
+        """)
+
+
+# =======================================================
 # UI BEGINS HERE
 # =======================================================
 
 st.markdown("---")
 
-# Sidebar for document upload
 with st.sidebar:
     st.header("📄 Document Upload")
     uploaded_pdf = st.file_uploader("Upload Financial Statement (PDF)", type=["pdf"])
@@ -759,7 +865,6 @@ if uploaded_pdf:
     if ai_data:
         st.sidebar.info("🤖 AI extracted financial values")
 
-# Main content tabs
 tab1, tab2, tab3 = st.tabs(["📊 Financial Analysis", "🔍 Research & Risk", "📋 Decision & CAM"])
 
 # =======================================================
@@ -768,7 +873,7 @@ tab1, tab2, tab3 = st.tabs(["📊 Financial Analysis", "🔍 Research & Risk", "
 
 with tab1:
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.subheader("Income Statement")
         revenue = st.number_input(
@@ -778,28 +883,28 @@ with tab1:
             max_value=10000000000000.0,
             step=1000000.0
         )
-        
+
         pbt = st.number_input(
             "Profit Before Tax (₹)",
             value=float(ai_data.get("profit_before_tax", 50000000)),
             min_value=0.0,
             step=1000000.0
         )
-        
+
         finance_cost = st.number_input(
             "Finance Cost (₹)",
             value=float(ai_data.get("finance_cost", 10000000)),
             min_value=0.0,
             step=1000000.0
         )
-        
+
         depreciation = st.number_input(
             "Depreciation (₹)",
             value=float(ai_data.get("depreciation", 10000000)),
             min_value=0.0,
             step=1000000.0
         )
-    
+
     with col2:
         st.subheader("Balance Sheet")
         total_debt = st.number_input(
@@ -808,15 +913,14 @@ with tab1:
             min_value=0.0,
             step=1000000.0
         )
-        
+
         equity = st.number_input(
             "Total Equity (₹)",
             value=float(ai_data.get("total_equity", 200000000)),
             min_value=0.0,
             step=1000000.0
         )
-        
-        # GST specific validation
+
         st.subheader("GST Compliance Check")
         gst_turnover = st.number_input(
             "GST Turnover (₹)",
@@ -825,7 +929,7 @@ with tab1:
             step=1000000.0,
             help="From GST-3B returns"
         )
-        
+
         bank_turnover = st.number_input(
             "Bank Statement Turnover (₹)",
             value=revenue,
@@ -833,37 +937,31 @@ with tab1:
             step=1000000.0,
             help="Total credits from bank statements"
         )
-    
-    # Calculated metrics
+
     ebitda = pbt + finance_cost + depreciation
-    
+
     if finance_cost > 0:
         interest_coverage = ebitda / finance_cost
     else:
         interest_coverage = 0
-    
+
     if equity > 0:
         debt_to_equity = total_debt / equity
     else:
         debt_to_equity = 10
-    
-    # Display calculated ratios
+
     metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
-    
+
     with metric_col1:
         st.metric("EBITDA", f"₹{ebitda/1e7:.1f}Cr")
     with metric_col2:
-        st.metric("Interest Coverage", f"{interest_coverage:.2f}x", 
+        st.metric("Interest Coverage", f"{interest_coverage:.2f}x",
                  delta="Healthy" if interest_coverage > 1.5 else "Weak")
     with metric_col3:
         st.metric("Debt/Equity", f"{debt_to_equity:.2f}x",
                  delta="High" if debt_to_equity > 2.5 else "Moderate")
     with metric_col4:
         st.metric("Profit Margin", f"{(pbt/revenue)*100:.1f}%" if revenue > 0 else "N/A")
-
-    # =======================================================
-    # FINANCIAL RATIO DISPLAY
-    # =======================================================
 
     ratios = calculate_financial_ratios(revenue, ebitda, total_debt, equity, finance_cost)
 
@@ -872,19 +970,20 @@ with tab1:
     ratio_cols = st.columns(len(ratios))
 
     for i, (name, value) in enumerate(ratios.items()):
-        ratio_cols[i].metric(name, f"{value:.2f}")  
+        ratio_cols[i].metric(name, f"{value:.2f}")
+
 # =======================================================
 # TAB 2: RESEARCH & RISK
 # =======================================================
 
 with tab2:
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.subheader("Company Details")
         company = st.text_input("Company Name", value="")
         promoter = st.text_input("Promoter Name (Optional)", value="")
-        
+
         st.subheader("Litigation Risk")
         litigation = st.number_input(
             "Number of Active Legal Cases",
@@ -898,7 +997,7 @@ with tab2:
             value="",
             height=80
         )
-    
+
     with col2:
         st.subheader("Operational Risk")
         sector = st.selectbox(
@@ -906,48 +1005,46 @@ with tab2:
             list(SECTOR_CONFIG.keys()),
             index=4
         )
-        
+
         capacity_util = st.slider(
             "Capacity Utilization",
             0.0, 1.0, 0.8,
             help="Operating capacity as % of maximum"
         )
-        
+
         mgmt = st.slider(
             "Management Quality (1-10)",
             1, 10, 7,
             help="Assessment of promoter track record & experience"
         )
-        
+
         gst_mismatch = st.slider(
             "GST Variance (Manual Override)",
             0.0, 0.5, 0.1,
             help="If GST inputs not available, use this estimate"
         )
-    
-    # Fetch news and calculate sentiment
+
     st.subheader("News Intelligence")
-    
+
     if st.button("🔍 Fetch Market News"):
         with st.spinner("Searching news..."):
             sentiment, articles = get_news_sentiment(company, promoter, sector)
             st.session_state.sentiment = sentiment
             st.session_state.articles = articles
-    
+
     if "articles" in st.session_state:
         articles = st.session_state.articles
         sentiment = st.session_state.sentiment
-        
-        st.metric("News Sentiment", f"{sentiment:+.2f}", 
+
+        st.metric("News Sentiment", f"{sentiment:+.2f}",
                  delta="Positive" if sentiment > 0.2 else "Negative" if sentiment < -0.2 else "Neutral")
-        
+
         if articles:
             st.write("**Recent Articles:**")
             for article in articles:
-                title = article.get("title","")
-                url = article.get("url","")
+                title  = article.get("title","")
+                url    = article.get("url","")
                 source = article.get("source",{}).get("name","Unknown")
-                
                 st.markdown(f"📌 [{title}]({url})")
                 st.caption(f"Source: {source}")
                 st.write("---")
@@ -955,9 +1052,8 @@ with tab2:
             st.info("No relevant news found")
     else:
         sentiment = 0
-        articles = []
-    
-    # Display sector headwinds
+        articles  = []
+
     if sector in SECTOR_CONFIG:
         st.info(f"**Sector Headwinds**: {SECTOR_CONFIG[sector]['headwinds']}")
 
@@ -967,84 +1063,81 @@ with tab2:
 
 with tab3:
     st.subheader("Credit Decision")
-    
+
     if st.button("⚡ Analyze & Generate CAM", key="analyze"):
         if not company:
             st.error("Please enter Company Name")
         else:
-            # Get sentiment if not already fetched
+            # Sentiment
             if "sentiment" not in st.session_state:
                 sentiment, articles = get_news_sentiment(company, promoter, sector)
                 st.session_state.sentiment = sentiment
-                st.session_state.articles = articles
+                st.session_state.articles  = articles
             else:
                 sentiment = st.session_state.sentiment
-                articles = st.session_state.articles
-            
-            # Calculate Five Cs
+                articles  = st.session_state.articles
+
+            # Five Cs
             five_cs = calculate_five_cs(
-                revenue, pbt, total_debt, equity, litigation, 
-                sentiment, mgmt, capacity_util, gst_mismatch, 
+                revenue, pbt, total_debt, equity, litigation,
+                sentiment, mgmt, capacity_util, gst_mismatch,
                 SECTOR_CONFIG[sector]["regulatory_risk"]
             )
-            
-            # Litigation risk
+
             litig_risk = assess_litigation_risk(litigation, litigation_notes)
-            
-            # GST compliance check
-            gst_check = validate_gst_compliance(gst_turnover, bank_turnover, gst_mismatch)
-            
-            # Model prediction
+            gst_check  = validate_gst_compliance(gst_turnover, bank_turnover, gst_mismatch)
+
+            # ── Model prediction ──────────────────────────────────────────
+            input_values_raw = [
+                revenue, ebitda, total_debt, interest_coverage,
+                gst_mismatch, litigation, sentiment,
+                SECTOR_CONFIG[sector]["regulatory_risk"],
+                mgmt, capacity_util
+            ]
+
+            df_input = None
+
             if model and feature_names:
-                input_data = np.array([[
-                    revenue,
-                    ebitda,
-                    total_debt,
-                    interest_coverage,
-                    gst_mismatch,
-                    litigation,
-                    sentiment,
-                    SECTOR_CONFIG[sector]["regulatory_risk"],
-                    mgmt,
-                    capacity_util
-                ]])
-                
-                df = pd.DataFrame(input_data, columns=feature_names)
-                pd_probability = model.predict_proba(df)[0][1]
+                input_array = np.array([input_values_raw])
+                df_input = pd.DataFrame(input_array, columns=feature_names)
+                pd_probability = float(model.predict_proba(df_input)[0][1])
             else:
-                pd_probability = 0.3
-            
-            pd_probability = max(0, min(pd_probability, 1))
-            
-            # Risk rating
+                # Fallback: rule-based PD estimate when model files are absent
+                base_pd  = 0.15
+                base_pd += min(litigation * 0.01, 0.20)
+                base_pd += gst_mismatch * 0.15
+                base_pd -= min(interest_coverage * 0.01, 0.10)
+                base_pd += SECTOR_CONFIG[sector]["regulatory_risk"] * 0.10
+                base_pd -= (mgmt / 10) * 0.05
+                base_pd -= capacity_util * 0.05
+                pd_probability = max(0.01, min(base_pd, 0.99))
+
+            pd_probability = max(0.0, min(pd_probability, 1.0))
+
             risk_rating, risk_description = calculate_risk_rating(pd_probability)
-            
-            # Decision
             decision = "Approved" if pd_probability <= threshold else "Rejected"
-            
-            # Display results in columns
+
+            # ── Result header ─────────────────────────────────────────────
             result_col1, result_col2, result_col3 = st.columns(3)
             credit_score = generate_credit_score(pd_probability)
-
             st.metric("Corporate Credit Score", credit_score)
-            
+
             with result_col1:
                 if decision == "Approved":
                     st.success(f"{decision}", icon="✅")
                 else:
                     st.error(f"{decision}", icon="❌")
-            
+
             with result_col2:
                 st.metric("Risk Rating", risk_rating, delta=risk_description)
-            
+
             with result_col3:
                 st.metric("Probability of Default (PD)", f"{pd_probability:.2%}")
-            
-            # Five Cs Display
+
+            # ── Five Cs ───────────────────────────────────────────────────
             st.subheader("Five Cs of Credit Assessment")
-            
             c_col1, c_col2, c_col3, c_col4, c_col5 = st.columns(5)
-            
+
             c_metrics = [
                 (c_col1, "Character"),
                 (c_col2, "Capacity"),
@@ -1052,65 +1145,46 @@ with tab3:
                 (c_col4, "Collateral"),
                 (c_col5, "Conditions")
             ]
-            
+
             for col, c_name in c_metrics:
                 score = five_cs[c_name]
                 with col:
-                    # Color code based on score
                     if score >= 70:
-                        color = "green"
                         status = "✅"
                     elif score >= 50:
-                        color = "orange"
                         status = "⚠️"
                     else:
-                        color = "red"
                         status = "❌"
-                    
                     st.metric(f"{status} {c_name}", f"{score:.0f}/100")
-            
-            # GST Compliance Status
+
+            # ── GST Status ────────────────────────────────────────────────
             st.subheader("GST Compliance Status")
             gst_col1, gst_col2, gst_col3 = st.columns(3)
-            
+
             with gst_col1:
                 st.metric("Variance", f"{gst_check['variance']:.1%}")
-            
             with gst_col2:
                 risk_color = "🔴" if gst_check['risk_level'] == "High" else "🟡" if gst_check['risk_level'] == "Medium" else "🟢"
                 st.metric("Risk Level", f"{risk_color} {gst_check['risk_level']}")
-            
             with gst_col3:
                 st.metric("Litigation Severity", litig_risk["severity"])
 
-            # =======================================================
-            # EARLY WARNING SIGNALS
-            # =======================================================
-
-            warnings = detect_early_warnings(
-                interest_coverage,
-                debt_to_equity,
-                gst_check["variance"],
-                sentiment
-            )
-
+            # ── Early Warnings ────────────────────────────────────────────
+            warnings = detect_early_warnings(interest_coverage, debt_to_equity,
+                                             gst_check["variance"], sentiment)
             if warnings:
                 st.subheader("Early Warning Signals")
-
             for w in warnings:
                 st.error(w)
-                # =======================================================
-            # INDUSTRY BENCHMARK COMPARISON
-            # =======================================================
 
+            # ── Industry Benchmarks ───────────────────────────────────────
             industry_insights = compare_to_industry(sector, debt_to_equity, interest_coverage)
-
             if industry_insights:
                 st.subheader("Industry Benchmark Comparison")
+            for insight in industry_insights:
+                st.warning(insight)
 
-                for insight in industry_insights:
-                    st.warning(insight)
-            # Decision Roadmap
+            # ── Decision Roadmap ──────────────────────────────────────────
             st.subheader("Decision Roadmap")
             roadmap = generate_decision_roadmap(
                 decision, pd_probability, five_cs, litig_risk, gst_check,
@@ -1118,31 +1192,26 @@ with tab3:
                 SECTOR_CONFIG[sector].get("headwinds", "")
             )
             st.markdown(roadmap)
-            
-            # Interest Rate Calculation
+
+            # ── Loan Recommendation ───────────────────────────────────────
             st.subheader("Loan Recommendation")
-            
             rate_details = calculate_interest_rate(
                 pd_probability, sector, interest_coverage, debt_to_equity
             )
-            
+
             rate_col1, rate_col2 = st.columns(2)
-            
+
             with rate_col1:
                 st.metric("Interest Rate", f"{rate_details['total_rate']:.2f}%")
-                
-                # Loan amount
-                max_loan = ebitda * 3.5
+                max_loan  = ebitda * 3.5
                 loan_amount = max_loan * (1 - pd_probability)
-                
                 st.write(f"**Maximum Loan Amount**: ₹{loan_amount:,.0f}")
-                
                 try:
                     words = num2words(int(loan_amount), lang="en_IN")
                     st.caption(f"_{words}_")
                 except:
                     pass
-            
+
             with rate_col2:
                 st.write("**Rate Breakdown:**")
                 st.write(f"• Base Rate: {rate_details['base_rate']:.2f}%")
@@ -1150,97 +1219,30 @@ with tab3:
                 st.write(f"• Sector Premium: {rate_details['sector_premium']:.2f}%")
                 st.write(f"• Leverage Premium: {rate_details['leverage_premium']:.2f}%")
                 st.write(f"• Coverage Discount: {rate_details['coverage_discount']:.2f}%")
-            
-            # ========================================================
-            # SHAP EXPLAINABILITY (Optimized for Streamlit Cloud)
-            # ========================================================
-            
-            if explainer and model and feature_names:
-                st.subheader("🔍 Feature Importance Analysis (SHAP Waterfall)")
-                
-                try:
-                    # Compute SHAP values
-                    shap_values = explainer(df)
-                    
-                    # Extract values
-                    base_value = explainer.expected_value
-                    shap_val = shap_values[0].values
-                    feature_vals = df.iloc[0].values
-                    
-                    # Create waterfall manually (lightweight & Streamlit-friendly)
-                    fig, ax = plt.subplots(figsize=(12, 7))
-                    
-                    # Get top 10 features by absolute SHAP value for clarity
-                    indices = np.argsort(np.abs(shap_val))[::-1][:10]
-                    
-                    sorted_features = [feature_names[i] for i in indices]
-                    sorted_shap = shap_val[indices]
-                    sorted_vals = feature_vals[indices]
-                    
-                    # Build cumulative values for waterfall effect
-                    cumulative = np.zeros(len(sorted_features) + 1)
-                    cumulative[0] = base_value
-                    
-                    for i in range(len(sorted_features)):
-                        cumulative[i + 1] = cumulative[i] + sorted_shap[i]
-                    
-                    # Color code: red for negative (risk), green for positive (safety)
-                    colors = ['#d62728' if x < 0 else '#2ca02c' for x in sorted_shap]
-                    
-                    # Plot horizontal bars for waterfall
-                    for i, (feature, shap_val_i, cumul_val) in enumerate(zip(sorted_features, sorted_shap, cumulative[:-1])):
-                        ax.barh(i, shap_val_i, left=cumul_val, color=colors[i], alpha=0.8, 
-                               edgecolor='black', linewidth=0.5)
-                        
-                        # Add value labels on bars
-                        label_x = cumul_val + shap_val_i / 2
-                        ax.text(label_x, i, f'{shap_val_i:.4f}', ha='center', va='center', 
-                               fontsize=9, fontweight='bold', color='white')
-                    
-                    # Reference lines for interpretation
-                    ax.axvline(x=base_value, color='blue', linestyle='--', linewidth=2.5, 
-                              label=f'Base Value (Expected): {base_value:.4f}', alpha=0.7)
-                    ax.axvline(x=cumulative[-1], color='red', linestyle='--', linewidth=2.5, 
-                              label=f'Model Prediction: {cumulative[-1]:.4f}', alpha=0.7)
-                    
-                    # Formatting
-                    ax.set_yticks(range(len(sorted_features)))
-                    ax.set_yticklabels(sorted_features, fontsize=10)
-                    ax.set_xlabel('SHAP Value Contribution', fontsize=11, fontweight='bold')
-                    ax.set_title('SHAP Waterfall Plot - Top 10 Feature Contributions to Default Risk', 
-                                fontsize=13, fontweight='bold', pad=20)
-                    ax.legend(loc='best', fontsize=10)
-                    ax.grid(axis='x', alpha=0.3, linestyle='--')
-                    
-                    plt.tight_layout()
-                    st.pyplot(fig, use_container_width=True)
-                    plt.close(fig)  # CRITICAL: Free memory immediately
-                    
-                    # Add interpretation guide
-                    with st.expander("📖 How to interpret this waterfall"):
-                        st.info("""
-                        - **Blue dashed line**: Expected default probability baseline
-                        - **Red dashed line**: Final model prediction for this company
-                        - **Green bars**: Factors reducing default risk (safer)
-                        - **Red bars**: Factors increasing default risk (riskier)
-                        - **Bar length**: Magnitude of impact on prediction
-                        """)
-                    
-                except Exception as e:
-                    st.error(f"⚠️ SHAP visualization error: {str(e)}")
-                    st.caption("Ensure TreeExplainer is properly initialized with training data")
-            
-            # CAM Generation
+
+            # ── SHAP WATERFALL ─────────────────────────────────────────────
+            # Always renders — uses real SHAP if model loaded, rule-based otherwise
+            render_shap_waterfall(
+                df=df_input,
+                input_values=input_values_raw,
+                pd_probability=pd_probability,
+                feature_names_list=feature_names if feature_names else [
+                    "Revenue", "EBITDA", "Total Debt", "Interest Coverage",
+                    "GST Variance", "Litigation", "Sentiment",
+                    "Sector Risk", "Management Quality", "Capacity Utilization"
+                ],
+                explainer_obj=explainer,
+                model_obj=model
+            )
+
+            # ── CAM ───────────────────────────────────────────────────────
             st.subheader("Credit Appraisal Memo")
-            
             cam = generate_cam(
                 company, revenue, ebitda, total_debt, equity, decision,
                 five_cs, risk_rating, interest_coverage, pd_probability
             )
-            
             st.markdown(cam)
-            
-            # Download CAM as text
+
             st.download_button(
                 label="⬇️ Download CAM",
                 data=cam,
