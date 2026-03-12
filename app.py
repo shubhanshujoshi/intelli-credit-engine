@@ -692,7 +692,7 @@ def render_shap_waterfall(df, input_values, pd_probability, feature_names_list,
     - If not: simulates interpretable contributions from raw inputs
     """
 
-    st.subheader("🔍 Feature Importance Analysis (SHAP Waterfall)")
+    st.subheader("Feature Importance Analysis (SHAP Waterfall)")
 
     # ── CASE 1: Real SHAP from XGBoost ──────────────────────────────────────
     if explainer_obj is not None and model_obj is not None and df is not None:
@@ -1252,3 +1252,4 @@ with tab3:
 
 st.markdown("---")
 st.caption("IntelliCredit-X | The Smart Credit Risk Analyzer")
+
